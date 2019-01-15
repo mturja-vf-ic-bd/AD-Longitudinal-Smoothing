@@ -34,7 +34,6 @@ if __name__ == "__main__":
     for mat in mat_list:
         max_val.append(np.amax(mat))
 
-    max_val = max_val - np.mean(max_val)
 
     max_val = np.asarray(max_val)
     W = rbf_optimization(max_val)
