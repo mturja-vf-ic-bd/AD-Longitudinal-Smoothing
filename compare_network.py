@@ -41,7 +41,7 @@ def get_sorted_index(c1):
 
 
 if __name__ == "__main__":
-    data_dir = '/home/turja/AD-Data_Organized'
+    data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
     subjects = [f for f in os.listdir(data_dir)]
     matches = []
     for sub in subjects:

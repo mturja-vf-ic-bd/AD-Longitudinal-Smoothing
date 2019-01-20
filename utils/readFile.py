@@ -21,7 +21,7 @@ def readMatricesFromDirectory(directory):
     mat_list = []
     for file in files:
         a = readMatrixFromTextFile(join(directory, file))
-        a /= a.sum()
+        #a /= a.sum()
         mat_list.append(a)
 
     return mat_list
