@@ -1,18 +1,19 @@
 from utils.readFile import *
 from matplotlib import pyplot as plt
+from matplotlib import pylab
 
 def rbf_optimization(S, sigma, lambda_m):
-    S = np.insert(S, len(S), S[len(S) - 1])
-    S = np.insert(S, len(S), S[len(S) - 1])
-    S = np.insert(S, 0, S[0])
-    S = np.insert(S, 0, S[0])
-    print("\nS : ", S)
+    #S = np.insert(S, len(S), S[len(S) - 1])
+    #S = np.insert(S, len(S), S[len(S) - 1])
+    #S = np.insert(S, 0, S[0])
+    #S = np.insert(S, 0, S[0])
+    #print("\nS : ", S)
     n = len(S)
     W = np.ones(n) / n
     time_points = [i for i in range(1, len(S) + 1)]
     nIter = 1000
     threshold = 10 ** -10
-    alpha = 0.2
+    alpha = 0.1
 
     for it in range(0, nIter):
         print("Iteration : ", it)
@@ -44,26 +45,57 @@ def comp_rbf_val(W, time_points, sigma):
 
 
 if __name__ == "__main__":
-    mat_list = readMatricesFromDirectory("016_S_4121")
+    data_dir = '/home/turja/AD-Data_Organized'
+    sub = '094_S_4234'
+    mat_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
 
-    max_val = []
-    for mat in mat_list:
-        max_val.append(np.amax(mat))
+    '''
+    subjects = [f for f in os.listdir(data_dir)]
+    out = open('community_stat.txt', 'w+')
+    for f in subjects:
+        mat_list = readMatricesFromDirectory(os.path.join(data_dir, f))
+        out.write(f + ' -> ' + str(getNumberOfComponents(mat_list)) + '\n')
 
-    max_val = np.asarray(max_val)
-    sigma = 2
-    lambda_m = 0.1
-    T = [i+1 for i in range(0, len(max_val))]
-    step=3
-    time_points = [i/step for i in range(step, step*(len(max_val) + 1))]
+    out.close()
+    '''
 
-    W = rbf_optimization(max_val, sigma, lambda_m)
+    S_list = []
+    row = [6]
+    col = [5]
 
-    val = comp_rbf_val(W, time_points, sigma)
-    print("\nactual val: ", max_val,
-          "\noutput : ", val,
-          "\nW = ", W)
+    for i in range(0, len(row)):
+        S = []
+        for mat in mat_list:
+            S.append(mat[row[i]][col[i]])
+            #S.append(np.amax(mat))
 
-    plt.scatter(T, max_val)
-    plt.plot(time_points, val)
+        S_list.append(S)
+    num_of_plot = len(row)
+    i = 1
+    for S in S_list:
+        S = np.asarray(S)
+        sigma = 2
+        lambda_m = 0.1
+        T = [i + 1 for i in range(0, len(S))]
+        step=1
+        time_points = [i / step for i in range(step, step * (len(S) + 1))]
+
+        mean_S = np.mean(S)
+        S = S - mean_S
+
+        W = rbf_optimization(S, sigma, lambda_m)
+
+        val = comp_rbf_val(W, time_points, sigma) + mean_S
+        S = S + mean_S
+        print("\nactual val: ", S,
+              "\noutput : ", val,
+              "\nW = ", W)
+
+        plt.subplot(num_of_plot, 1, i)
+        plt.plot(T, S, color='red')
+        plt.plot(time_points, val, color='blue')
+        i = i + 1
+
+    pylab.savefig('out.png')
     plt.show()
+
