@@ -20,8 +20,15 @@ def readMatricesFromDirectory(directory):
     files = [f for f in os.listdir(directory)]
     mat_list = []
     for file in files:
-        a = readMatrixFromTextFile(join(directory, file))
-        #a /= a.sum()
-        mat_list.append(a)
+        file = os.path.join(directory, file)
+        if os.path.isdir(file):
+            print(file, " is a directory")
+        elif os.path.isfile(file):
+            print("Reading ", file)
+            a = readMatrixFromTextFile(join(directory, file))
+            #a /= a.sum()
+            mat_list.append(a)
+        else:
+            print(file, " is weird")
 
     return mat_list

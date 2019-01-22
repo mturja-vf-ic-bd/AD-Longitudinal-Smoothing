@@ -1,4 +1,6 @@
 from utils.readFile import *
+from compare_network import *
+import pickle
 from matplotlib import pyplot as plt
 from matplotlib import pylab
 
@@ -47,19 +49,19 @@ if __name__ == "__main__":
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
     sub = '094_S_4234'
     mat_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
-
     '''
     subjects = [f for f in os.listdir(data_dir)]
     out = open('community_stat.txt', 'w+')
     for f in subjects:
         mat_list = readMatricesFromDirectory(os.path.join(data_dir, f))
         out.write(f + ' -> ' + str(getNumberOfComponents(mat_list)) + '\n')
+    
 
     out.close()
-    '''
+    
+    
     n = len(mat_list[0])
     S_list = []
-    cont_mat_list = [np.zeros((n, n)) for i in range(0, len(mat_list))]
 
     avg = np.ones((n, n))
     for mat in mat_list:
@@ -67,7 +69,6 @@ if __name__ == "__main__":
 
     pos = [(i, j) if avg[i, j] > 0 else (-1, -1) for i in range(0, n) for j in range(0, n)]
     pos = list(filter(lambda a: a != (-1, -1), pos))
-    print("Pos len: ", len(pos))
 
     for i in range(0, len(pos)):
         S = []
@@ -77,6 +78,7 @@ if __name__ == "__main__":
 
         S_list.append(S)
 
+    print(S_list)
 
     num_of_plot = len(pos)
     i = 1
@@ -97,25 +99,37 @@ if __name__ == "__main__":
         val = comp_rbf_val(W, time_points, sigma) + mean_S
         S = S + mean_S
         long_link_val.append(val)
-        print("\nactual val: ", S,
-              "\noutput : ", val,
-              "\nW = ", W)
+        #print("\nactual val: ", S,
+         #     "\noutput : ", val,
+         #     "\nW = ", W)
 
-        #plt.subplot(num_of_plot, 1, i)
-        #plt.plot(T, S, color='red')
-        #plt.plot(time_points, val, color='blue')
-        #i = i + 1
-
-    #pylab.savefig('out.png')
-    #plt.show()
-
-    print(len(long_link_val))
-
-    for i in range(0, len(long_link_val)):
-        row, col = pos[i]
-        for t in range(0, len(cont_mat_list)):
-            cont_mat = cont_mat_list[t]
+    cont_mat_list = []
+    for t in range(0, len(mat_list)):
+        cont_mat = np.zeros((n, n))
+        for i in range(0, len(long_link_val)):
+            row, col = pos[i]
             cont_mat[row, col] = long_link_val[i][t]
+        cont_mat_list.append(cont_mat)
+
+    with open('cont_mat_list.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
+        pickle.dump(cont_mat_list, f)
+    '''
+
+    cont_mat_list = pickle.load(open('cont_mat_list.pkl', 'rb'))
+    print(cont_mat_list)
+    print('\nmat_list_len: ', len(mat_list),
+          '\ncont_mat_list_len: ', len(cont_mat_list))
+
+    n_comp, _ = get_number_of_components(mat_list)
+    n_comp_smoothed, _ = get_number_of_components(cont_mat_list)
+
+    print(n_comp,
+          '\n',
+          n_comp_smoothed)
+
+
+
+
 
 
 

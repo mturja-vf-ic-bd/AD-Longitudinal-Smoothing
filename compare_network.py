@@ -1,6 +1,6 @@
 from collections import Counter
 from utils.get_hemisphere import *
-from bct import community_louvain, link_communities
+from bct import community_louvain
 from matplotlib import pyplot as plt
 import operator
 
