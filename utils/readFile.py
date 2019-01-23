@@ -14,6 +14,7 @@ def readMatrixFromTextFile(fname, debug = False):
 
     a = np.asarray(a)
     a = (a + np.transpose(a))/2
+    a /= a.sum()
     return a
 
 def readMatricesFromDirectory(directory):
