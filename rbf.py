@@ -92,18 +92,6 @@ class RBF:
 
         for S in S_list:
             S = np.asarray(S)
-            '''
-            step = 1
-            time_points = [i / step for i in range(step, step * (len(S) + 1))]
-            mean_S = np.mean(S)
-            S = S - mean_S
-
-            W = self.rbf_optimization(S)
-
-            val = self.comp_rbf_val(W, time_points) + mean_S
-            S = S + mean_S
-            
-            '''
             val = self.get_result(S)
             if self.debug:
                 print("\nactual val: ", S,

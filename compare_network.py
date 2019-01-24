@@ -9,7 +9,7 @@ def get_number_of_components(connectomes):
     n_component = []
     label_component = []
     for connectome in connectomes:
-        c_i, q = community_louvain(np.asarray(connectome), gamma=0.5)
+        c_i, q = community_louvain(np.asarray(connectome), gamma=1)
         n_component.append(len(set(c_i)))
         label_component.append(c_i)
 
