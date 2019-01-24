@@ -27,7 +27,7 @@ def readMatricesFromDirectory(directory):
         elif os.path.isfile(file):
             print("Reading ", file)
             a = readMatrixFromTextFile(join(directory, file))
-            #a /= a.sum()
+            a /= a.sum(axis=1)
             mat_list.append(a)
         else:
             print(file, " is weird")

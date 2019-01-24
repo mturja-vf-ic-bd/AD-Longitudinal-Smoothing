@@ -20,8 +20,8 @@ def EProjSimplex(v, k = 1):
         lambda_m = 0
         while abs(sum_pos) > 0.00000000001:
             v1 = v0 - lambda_m
-            print("iteration ", ft,
-                  "v1 = ", v1)
+            #print("iteration ", ft,
+            #      "v1 = ", v1)
             posidx = v1 > 0
             npos = sum(posidx)
             sum_pos = sum(v1[posidx]) - k
@@ -38,7 +38,7 @@ def EProjSimplex(v, k = 1):
 
 
 if __name__ == '__main__':
-    v = np.array([0.1, -0.2, -0.4, 0.2, 0.5])
+    v = np.array([0.1, 2, 0.4, 0.2, 0.5])
     x, ft = EProjSimplex(v)
     print("x = ", x,
           "ft = ", ft)

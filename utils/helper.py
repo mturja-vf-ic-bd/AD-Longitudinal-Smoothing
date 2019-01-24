@@ -1,5 +1,7 @@
 import numpy as np
 from numpy import linalg as LA
+from utils.L2_distance import *
+import copy
 
 
 def group_elements_of_matrices(input_mat_list):
@@ -32,6 +34,7 @@ def find_mean(mat_list, weights):
 
     return avg
 
+
 def get_eigen(L, c):
     eigenValues, eigenVectors = LA.eig(L)
     idx = eigenValues.argsort()
@@ -40,12 +43,13 @@ def get_eigen(L, c):
     return eigenValues[0:c], eigenVectors[:, 0:c]
 
 
+def get_gamma(d, k):
+    d_new = copy.deepcopy(d)
+    d_new.sort(axis=1)
+    return np.array(0.5 * (k * d_new[:, k] - d_new[:, 0:k].sum(axis=1)))
+
+
 if __name__ == '__main__':
-    mat_list = [np.array([[1, 2, 3], [4, 5, 7]]), np.array([[3, 2, 1], [6, 5, 4]])]
-    w = [np.array([[0.2, 0.4, 0.9], [0.5, 0.5, 0.5]]), np.array([[0.1, 0.6, 0.4], [0.5, 0.5, 0.5]])]
-    mn = np.random.random((10, 10))
-    M = np.matmul(mn, np.transpose(mn))
-    L = np.diag(M.sum(axis=1)) - M
-    ev, evec = get_eigen(L, 3)
-    print('\neigen value: ', ev,
-          '\neigen vector: ', evec)
+    mat = np.array([[1, 2, 3], [5, 1, 6], [11, 13, 9]])
+    gamma = get_gamma(mat, 1)
+    print(gamma)

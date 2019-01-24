@@ -10,7 +10,6 @@ class RBF:
     def rbf_optimization(self, S):
         S = np.insert(S, len(S), S[len(S) - 1])
         S = np.insert(S, 0, S[0])
-        #print("\nS : ", S)
         n = len(S)
         W = np.ones(n) / n
         time_points = [i for i in range(1, len(S) + 1)]
@@ -53,8 +52,11 @@ class RBF:
         for mat in connectome_list:
             S_ones = np.multiply(mat, S_ones)
 
-        pos = [(i, j) if S_ones[i, j] > 0 else (-1, -1) for i in range(0, n) for j in range(0, n)]
+        pos = [(i, j) if S_ones[i, j] > 0 and i > j else (-1, -1) for i in range(0, n) for j in range(0, n)]
         pos = list(filter(lambda a: a != (-1, -1), pos))
+
+        if self.debug:
+            print("Number of links: ", len(pos))
 
         for i in range(0, len(pos)):
             S = []
@@ -96,6 +98,7 @@ class RBF:
             for i in range(0, len(long_link_val)):
                 row, col = pos[i]
                 cont_mat[row, col] = long_link_val[i][t]
+                cont_mat[col, row] = cont_mat[row, col]
             cont_mat_list.append(cont_mat)
 
         # Replace negative values with zero
