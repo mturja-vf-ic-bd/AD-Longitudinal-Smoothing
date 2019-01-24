@@ -13,8 +13,6 @@ def readMatrixFromTextFile(fname, debug = False):
         a.append([float(x) for x in line.split()])
 
     a = np.asarray(a)
-    a = (a + np.transpose(a))/2
-    a /= a.sum()
     return a
 
 def readMatricesFromDirectory(directory):
@@ -28,6 +26,7 @@ def readMatricesFromDirectory(directory):
             print("Reading ", file)
             a = readMatrixFromTextFile(join(directory, file))
             a /= a.sum(axis=1)
+            a = (a + np.transpose(a)) / 2
             mat_list.append(a)
         else:
             print(file, " is weird")

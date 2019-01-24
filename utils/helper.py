@@ -53,3 +53,4 @@ if __name__ == '__main__':
     mat = np.array([[1, 2, 3], [5, 1, 6], [11, 13, 9]])
     gamma = get_gamma(mat, 1)
     print(gamma)
+    # Add more test

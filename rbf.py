@@ -27,12 +27,18 @@ class RBF:
 
         return W
 
+    def get_features(self, time_points):
+        time_points = np.asarray(time_points)
+        time_points_tiled = np.tile(time_points, (len(time_points), 1))
+        radial_basis = np.exp(- (time_points_tiled - np.transpose(time_points_tiled)) ** 2 / (2 * self.sigma ** 2))
+        return radial_basis
+
     def comp_rbf_val(self, W, time_points):
         W = np.asarray(W)
         time_points = np.asarray(time_points)
         time_points_tiled = np.transpose(np.tile(time_points, (len(W), 1)))
 
-        T = [i+1 for i in range(0, len(W))]
+        T = [i + 1 for i in range(0, len(W))]
         T = np.tile(T, (len(time_points), 1))
         radial_basis = np.exp(- (time_points_tiled - T) ** 2 / (2 * self.sigma ** 2))
         return np.matmul(radial_basis, np.transpose(W))
@@ -42,6 +48,18 @@ class RBF:
         row, col = matrix.shape
         matrix = [matrix[i, j] if matrix[i, j] > 0 else 0 for i in range(0, row) for j in range(0, col)]
         return np.asarray(matrix).reshape((row, col))
+
+    def get_result(self, S):
+        t = [i + 1 for i in range(0, len(S))]
+        X = self.get_features(t)
+        W = np.matmul(
+            np.matmul(np.linalg.inv(np.matmul(np.transpose(X), X) +
+                                    np.multiply(self.lambda_m, np.identity(len(t)))),
+                      np.transpose(X)), np.transpose(S))  # Y = (X^T*X)^-1 * X^T * Y^T
+
+        S_pred = np.matmul(X, np.transpose(W))
+
+        return S_pred
 
     def fit_rbf_to_longitudinal_connectomes(self, connectome_list):
         n = len(connectome_list[0])
@@ -74,9 +92,9 @@ class RBF:
 
         for S in S_list:
             S = np.asarray(S)
+            '''
             step = 1
             time_points = [i / step for i in range(step, step * (len(S) + 1))]
-
             mean_S = np.mean(S)
             S = S - mean_S
 
@@ -84,12 +102,13 @@ class RBF:
 
             val = self.comp_rbf_val(W, time_points) + mean_S
             S = S + mean_S
-            long_link_val.append(val)
-
+            
+            '''
+            val = self.get_result(S)
             if self.debug:
                 print("\nactual val: ", S,
-                      "\noutput : ", val,
-                      "\nW = ", W)
+                      "\noutput : ", val)
+            long_link_val.append(val)
 
         # Generate new set of connectomes from the interpolated values
         cont_mat_list = []
@@ -107,3 +126,12 @@ class RBF:
             filtered_cont_mat_list.append(self.filter_negative(mat))
 
         return filtered_cont_mat_list
+
+
+if __name__ == '__main__':
+    rbf = RBF(1, 0.1, True)
+    S = [10, 11, 8, 5]
+    S_pred = rbf.get_result(S)
+    print("\nprediction: ", S_pred,
+          "\nactual: ", S)
+
