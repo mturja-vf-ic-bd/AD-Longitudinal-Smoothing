@@ -12,4 +12,4 @@ class Args:
         self.beta = np.ones(self.c_dim)
         self.mu = 1
         self.k = 25  # number of non-zero elements in each row of the connectome matrix
-        self.root_directory = "/home/turja/AD-Longitudinal-Smoothing"
+        self.root_directory = "/playpen/mturja/AD-Longitudinal-Smoothing"
