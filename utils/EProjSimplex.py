@@ -1,6 +1,7 @@
 from utils.helper import get_gamma, get_eigen
 from utils.L2_distance import *
 from utils.readFile import *
+from utils.create_brain_net_files import *
 from args import Args
 from compare_network import get_number_of_components
 
@@ -43,11 +44,12 @@ def EProjSimplex(v, k = 1):
 if __name__ == '__main__':
     # Read data
     data_dir = os.path.join(os.path.join(os.path.dirname(os.getcwd()), os.pardir), 'AD-Data_Organized')
-    sub = '027_S_4926'
+    sub = '094_S_4234'
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
     args = Args()
 
-    A = connectome_list[0]
+    t = 0
+    A = connectome_list[t]
     dX = 1 - A
     gamma = get_gamma(dX, args.k)
     row, col = A.shape
@@ -57,12 +59,13 @@ if __name__ == '__main__':
 
     print("\nAverage number of non zero elements per row before optimizing: ", (A > 0).sum() / 148,
           "\nAverage number of non zero elements per row after optimizing : ", (S > 0).sum() / 148)
-
-    print("\nNumber of component before optimization: ", get_number_of_components([S]))
+    n_comp, label_list = get_number_of_components([S])
+    print("\nNumber of component before optimization: ", n_comp)
     # Modularity constraint optimization
 
-    for itr in range(0, 200):
-        print("Iteration: ", itr)
+    for itr in range(0, args.n_iter):
+        if args.debug:
+            print("Iteration: ", itr)
         S = (np.transpose(S) + S) / 2
         D_S = np.diag(S.sum(axis=1))
         L = D_S - S
@@ -76,7 +79,18 @@ if __name__ == '__main__':
         for j in range(0, row):
             S[j, :], _ = EProjSimplex(-1 * d[j, :] / (2 * gamma[j]))
 
-        print("Change: ", abs(S - S_old).sum()/S_old.sum())
+            if args.debug:
+                print("Change: ", abs(S - S_old).sum()/S_old.sum())
 
     print("\nAverage number of non zero elements per row after optimizing : ", (S > 0).sum() / 148)
     print("\nNumber of component after optimization: ", get_number_of_components([S]))
+
+    output_dir = os.path.join(data_dir, sub + '_smoothed')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
+        np.savetxt(out, S)
+        print("Saved file ", os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)))
+
+    create_brain_net_node_files(sub, label_list)
+    create_brain_net_node_files(sub + "_smoothed", label_list)

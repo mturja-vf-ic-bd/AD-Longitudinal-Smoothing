@@ -22,4 +22,4 @@ if __name__ == '__main__':
     testA = np.reshape([1 if 148 - i > j else 0 for i in range(0, 148) for j in range(0, 148)], (148, 148))
     print(testA)
     print("\nleft: ", get_left_hemisphere(testA).sum() == 74 * 74)
-    print("\nrigth: ", get_right_hemisphere(testA).sum() == 0)
+    print("\nright: ", get_right_hemisphere(testA).sum() == 0)

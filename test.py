@@ -1,15 +1,15 @@
 from rbf import *
-import pickle
-import numpy as np
+from utils.create_brain_net_files import *
 from utils.helper import find_mean, get_eigen, get_gamma
 from utils.L2_distance import *
-from utils import EProjSimplex
+from utils import EProjSimplex, get_hemisphere
 import time
 from args import Args
 
 
 def optimize_longitudinal_connectomes(connectome_list):
-    args = Args()
+    c_dim = connectome_list[0].shape
+    args = Args(c_dim)
     rbf_fit = RBF(args.rbf_sigma, args.lambda_m, args.debug)
     wt_local = [np.ones(args.c_dim) / len(connectome_list)for i in range(0, len(connectome_list))]
     beta = np.ones(args.c_dim) / 2
@@ -41,8 +41,6 @@ def optimize_longitudinal_connectomes(connectome_list):
             smoothed_connectomes[t] = np.asarray(S_new)
 
         smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
-        n_comp_, _ = get_number_of_components(smoothed_connectomes)
-        print("\nNumber of component: ", n_comp_)
 
     return smoothed_connectomes
 
@@ -50,6 +48,21 @@ def optimize_longitudinal_connectomes(connectome_list):
 if __name__ == "__main__":
     # Read data
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
-    sub = '027_S_4926'
+    sub = '094_S_4234'
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
-    optimize_longitudinal_connectomes(connectome_list)
+    #for t in range(0, len(connectome_list)):
+    #    connectome_list[t] = get_hemisphere.get_right_hemisphere(connectome_list[t])
+
+    smoothed_connectomes = optimize_longitudinal_connectomes(connectome_list)
+    output_dir = os.path.join(data_dir, sub + '_smoothed')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    for t in range(0, len(smoothed_connectomes)):
+        with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
+            np.savetxt(out, smoothed_connectomes[t])
+
+    n_comp_, label_list = get_number_of_components(smoothed_connectomes)
+    print("\nNumber of component: ", n_comp_)
+    create_brain_net_node_files(sub, label_list)
+    create_brain_net_node_files(sub + "_smoothed", label_list)
