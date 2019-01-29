@@ -1,11 +1,10 @@
 from rbf import *
 from utils.create_brain_net_files import *
-from utils.helper import find_mean, get_eigen, get_gamma
+from utils.helper import *
 from utils.L2_distance import *
 from utils import EProjSimplex, get_hemisphere
-import time
+from bct.utils import visualization
 from args import Args
-import copy
 
 
 def optimize_longitudinal_connectomes(connectome_list):
@@ -15,8 +14,6 @@ def optimize_longitudinal_connectomes(connectome_list):
     wt_local = [np.ones(args.c_dim) / len(connectome_list)for i in range(0, len(connectome_list))]
 
     smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(connectome_list)
-    #smoothed_connectomes = copy.deepcopy(connectome_list)
-
 
     for i in range(0, args.n_iter):
         print("Iteration: ", i)
@@ -55,6 +52,7 @@ if __name__ == "__main__":
     sub = '027_S_4926'
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
 
+
     smoothed_connectomes = optimize_longitudinal_connectomes(connectome_list)
     output_dir = os.path.join(data_dir, sub + '_smoothed')
     if not os.path.exists(output_dir):
@@ -70,3 +68,4 @@ if __name__ == "__main__":
     print("\nNumber of component: ", n_comp_)
     create_brain_net_node_files(sub, label_list)
     create_brain_net_node_files(sub + "_smoothed", label_list)
+

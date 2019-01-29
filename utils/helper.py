@@ -1,8 +1,9 @@
-import numpy as np
+import os
 from numpy import linalg as LA
 from utils.L2_distance import *
 import copy
-
+from args import Args
+import json
 
 def group_elements_of_matrices(input_mat_list):
     mat_list = []
@@ -47,6 +48,20 @@ def get_gamma(d, k):
     d_new = copy.deepcopy(d)
     d_new.sort(axis=1)
     return np.array(0.5 * (k * d_new[:, k] - d_new[:, 0:k].sum(axis=1)))
+
+
+def get_data_folder(subject):
+    args = Args()
+    return os.path.join(os.path.join(os.path.join(args.root_directory, os.pardir), 'AD-Data_Organized'), subject)
+
+
+def get_coordinates(subject):
+    table_file = os.path.join(get_data_folder(subject), 'helper_files/parcellationTable.json')
+    with open(table_file, 'r') as f:
+        table = json.load(f)
+        coord = [row["coord"] for row in table]
+
+    return coord
 
 
 if __name__ == '__main__':

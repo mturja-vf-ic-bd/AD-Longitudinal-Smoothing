@@ -48,6 +48,7 @@ if __name__ == '__main__':
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
     args = Args()
 
+<<<<<<< HEAD
     output_dir = os.path.join(data_dir, sub + '_smoothed')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -57,6 +58,8 @@ if __name__ == '__main__':
         print((index//148, index%148), index)
 
     smoothed_connectomes = []
+=======
+>>>>>>> 9e3720ee51902767d8ad61b3bc9c6d8a7adae815
     for t in range(0, len(connectome_list)):
         A = connectome_list[t]
         dX = 1 - A
@@ -68,6 +71,11 @@ if __name__ == '__main__':
 
         print("\nAverage number of non zero elements per row before optimizing: ", (A > 0).sum() / 148,
               "\nAverage number of non zero elements per row after optimizing : ", (S > 0).sum() / 148)
+<<<<<<< HEAD
+=======
+        n_comp, label_list = get_number_of_components([S])
+        print("\nNumber of component before optimization: ", n_comp)
+>>>>>>> 9e3720ee51902767d8ad61b3bc9c6d8a7adae815
         # Modularity constraint optimization
 
         for itr in range(0, args.n_iter):
@@ -78,7 +86,11 @@ if __name__ == '__main__':
             L = D_S - S
             eig_val, F = get_eigen(L, args.n_module)
             dF = L2_distance(np.transpose(F), np.transpose(F))
+<<<<<<< HEAD
             lmd = 0.1
+=======
+            lmd = 0.5
+>>>>>>> 9e3720ee51902767d8ad61b3bc9c6d8a7adae815
             d = dX + lmd * dF
             gamma = get_gamma(d, args.k)
             S_old = S
@@ -90,15 +102,28 @@ if __name__ == '__main__':
                     print("Change: ", abs(S - S_old).sum()/S_old.sum())
 
         print("\nAverage number of non zero elements per row after optimizing : ", (S > 0).sum() / 148)
+<<<<<<< HEAD
         smoothed_connectomes.append(S)
 
+=======
+        print("\nNumber of component after optimization: ", get_number_of_components([S]))
+
+        output_dir = os.path.join(data_dir, sub + '_smoothed')
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+>>>>>>> 9e3720ee51902767d8ad61b3bc9c6d8a7adae815
         with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
             np.savetxt(out, S)
             print("Saved file ", os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)))
 
+<<<<<<< HEAD
     n_comp_, label_list = get_number_of_components(connectome_list)
     print("\nNumber of component: ", n_comp_)
     n_comp_, label_list = get_number_of_components(smoothed_connectomes)
     print("\nNumber of component: ", n_comp_)
     #create_brain_net_node_files(sub, label_list)
     #create_brain_net_node_files(sub + "_smoothed", label_list)
+=======
+        create_brain_net_node_files(sub, label_list)
+        create_brain_net_node_files(sub + "_smoothed", label_list)
+>>>>>>> 9e3720ee51902767d8ad61b3bc9c6d8a7adae815
