@@ -44,53 +44,61 @@ def EProjSimplex(v, k = 1):
 if __name__ == '__main__':
     # Read data
     data_dir = os.path.join(os.path.join(os.path.dirname(os.getcwd()), os.pardir), 'AD-Data_Organized')
-    sub = '094_S_4234'
+    sub = '027_S_4926'
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
     args = Args()
-
-    t = 0
-    A = connectome_list[t]
-    dX = 1 - A
-    gamma = get_gamma(dX, args.k)
-    row, col = A.shape
-    S = np.zeros(A.shape)
-    for i in range(0, row):
-        S[i, :], _ = EProjSimplex(-1 * dX[i, :] / (2 * gamma[i]))
-
-    print("\nAverage number of non zero elements per row before optimizing: ", (A > 0).sum() / 148,
-          "\nAverage number of non zero elements per row after optimizing : ", (S > 0).sum() / 148)
-    n_comp, label_list = get_number_of_components([S])
-    print("\nNumber of component before optimization: ", n_comp)
-    # Modularity constraint optimization
-
-    for itr in range(0, args.n_iter):
-        if args.debug:
-            print("Iteration: ", itr)
-        S = (np.transpose(S) + S) / 2
-        D_S = np.diag(S.sum(axis=1))
-        L = D_S - S
-        eig_val, F = get_eigen(L, args.n_module)
-        dF = L2_distance(np.transpose(F), np.transpose(F))
-        lmd = 0.5
-        d = dX + lmd * dF
-        gamma = get_gamma(d, args.k)
-        S_old = S
-        S = np.zeros(A.shape)
-        for j in range(0, row):
-            S[j, :], _ = EProjSimplex(-1 * d[j, :] / (2 * gamma[j]))
-
-            if args.debug:
-                print("Change: ", abs(S - S_old).sum()/S_old.sum())
-
-    print("\nAverage number of non zero elements per row after optimizing : ", (S > 0).sum() / 148)
-    print("\nNumber of component after optimization: ", get_number_of_components([S]))
 
     output_dir = os.path.join(data_dir, sub + '_smoothed')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
-        np.savetxt(out, S)
-        print("Saved file ", os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)))
 
-    create_brain_net_node_files(sub, label_list)
-    create_brain_net_node_files(sub + "_smoothed", label_list)
+    for connectome in connectome_list:
+        index = np.argmax(connectome)
+        print((index//148, index%148), index)
+
+    smoothed_connectomes = []
+    for t in range(0, len(connectome_list)):
+        A = connectome_list[t]
+        dX = 1 - A
+        gamma = get_gamma(dX, args.k)
+        row, col = A.shape
+        S = np.zeros(A.shape)
+        for i in range(0, row):
+            S[i, :], _ = EProjSimplex(-1 * dX[i, :] / (2 * gamma[i]))
+
+        print("\nAverage number of non zero elements per row before optimizing: ", (A > 0).sum() / 148,
+              "\nAverage number of non zero elements per row after optimizing : ", (S > 0).sum() / 148)
+        # Modularity constraint optimization
+
+        for itr in range(0, args.n_iter):
+            if args.debug:
+                print("Iteration: ", itr)
+            S = (np.transpose(S) + S) / 2
+            D_S = np.diag(S.sum(axis=1))
+            L = D_S - S
+            eig_val, F = get_eigen(L, args.n_module)
+            dF = L2_distance(np.transpose(F), np.transpose(F))
+            lmd = 0.1
+            d = dX + lmd * dF
+            gamma = get_gamma(d, args.k)
+            S_old = S
+            S = np.zeros(A.shape)
+            for j in range(0, row):
+                S[j, :], _ = EProjSimplex(-1 * d[j, :] / (2 * gamma[j]))
+
+                if args.debug:
+                    print("Change: ", abs(S - S_old).sum()/S_old.sum())
+
+        print("\nAverage number of non zero elements per row after optimizing : ", (S > 0).sum() / 148)
+        smoothed_connectomes.append(S)
+
+        with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
+            np.savetxt(out, S)
+            print("Saved file ", os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)))
+
+    n_comp_, label_list = get_number_of_components(connectome_list)
+    print("\nNumber of component: ", n_comp_)
+    n_comp_, label_list = get_number_of_components(smoothed_connectomes)
+    print("\nNumber of component: ", n_comp_)
+    #create_brain_net_node_files(sub, label_list)
+    #create_brain_net_node_files(sub + "_smoothed", label_list)

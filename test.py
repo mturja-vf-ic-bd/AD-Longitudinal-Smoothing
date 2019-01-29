@@ -5,6 +5,7 @@ from utils.L2_distance import *
 from utils import EProjSimplex, get_hemisphere
 import time
 from args import Args
+import copy
 
 
 def optimize_longitudinal_connectomes(connectome_list):
@@ -12,12 +13,15 @@ def optimize_longitudinal_connectomes(connectome_list):
     args = Args(c_dim)
     rbf_fit = RBF(args.rbf_sigma, args.lambda_m, args.debug)
     wt_local = [np.ones(args.c_dim) / len(connectome_list)for i in range(0, len(connectome_list))]
-    beta = np.ones(args.c_dim) / 2
+
     smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(connectome_list)
+    #smoothed_connectomes = copy.deepcopy(connectome_list)
+
 
     for i in range(0, args.n_iter):
         print("Iteration: ", i)
         M = find_mean(smoothed_connectomes, wt_local)  # link-wise mean of the connectomes
+        M = 0.5 * np.add(M, M.T)
         wt_local = [np.exp(-np.exp(np.subtract(smoothed_connectome, M)) / (args.rbf_sigma ** 2))
                     for smoothed_connectome in smoothed_connectomes]  # get weight W for each connectome
 
@@ -28,9 +32,9 @@ def optimize_longitudinal_connectomes(connectome_list):
         dF = L2_distance(np.transpose(F), np.transpose(F))
 
         for t in range(0, len(smoothed_connectomes)):
-            dX = (1 - connectome_list[t]) ** 2
-            dI = dX + (1 - smoothed_connectomes[t]) ** 2 + \
-                 np.multiply(beta, np.add((1 - M) ** 2, args.mu * dF))
+            dX = (1 - connectome_list[t])
+            dI = dX + (1 - smoothed_connectomes[t]) + \
+                 np.multiply(args.beta, np.add((1 - M), args.mu * dF))
 
             gamma = get_gamma(dI, args.k)
             S_new = np.zeros(args.c_dim)
@@ -48,10 +52,8 @@ def optimize_longitudinal_connectomes(connectome_list):
 if __name__ == "__main__":
     # Read data
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
-    sub = '094_S_4234'
+    sub = '027_S_4926'
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
-    #for t in range(0, len(connectome_list)):
-    #    connectome_list[t] = get_hemisphere.get_right_hemisphere(connectome_list[t])
 
     smoothed_connectomes = optimize_longitudinal_connectomes(connectome_list)
     output_dir = os.path.join(data_dir, sub + '_smoothed')
@@ -62,6 +64,8 @@ if __name__ == "__main__":
         with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
             np.savetxt(out, smoothed_connectomes[t])
 
+    n_comp_, label_list = get_number_of_components(connectome_list)
+    print("\nNumber of component: ", n_comp_)
     n_comp_, label_list = get_number_of_components(smoothed_connectomes)
     print("\nNumber of component: ", n_comp_)
     create_brain_net_node_files(sub, label_list)

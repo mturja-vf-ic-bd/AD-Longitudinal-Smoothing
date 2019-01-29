@@ -4,7 +4,7 @@ from os.path import join
 import numpy as np
 
 
-def readMatrixFromTextFile(fname, debug = False):
+def readMatrixFromTextFile(fname, debug=False):
     if debug == True:
         print("Reading File: " + fname)
     a = []
@@ -15,7 +15,7 @@ def readMatrixFromTextFile(fname, debug = False):
     a = np.asarray(a)
     return a
 
-def readMatricesFromDirectory(directory):
+def readMatricesFromDirectory(directory, normailze=True):
     files = [f for f in os.listdir(directory)]
     mat_list = []
     for file in files:
@@ -25,8 +25,9 @@ def readMatricesFromDirectory(directory):
         elif os.path.isfile(file):
             print("Reading ", file)
             a = readMatrixFromTextFile(join(directory, file))
-            a /= a.sum(axis=1)
-            a = (a + np.transpose(a)) / 2
+            if normailze:
+                a /= a.sum(axis=1)
+                a = (a + np.transpose(a)) / 2
             mat_list.append(a)
         else:
             print(file, " is weird")
