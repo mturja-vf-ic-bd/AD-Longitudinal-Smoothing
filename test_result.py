@@ -7,12 +7,12 @@ from args import Args
 if __name__ == '__main__':
     args = Args()
     data_dir = os.path.join(os.path.dirname(args.root_directory), 'AD-Data_Organized')
-    sub = '027_S_5110'
+    sub = '027_S_4926'
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
     smoothed_connectomes = readMatricesFromDirectory(os.path.join(data_dir, sub+'_smoothed'), False)
     A = []
     S = []
-    ind = np.argsort(connectome_list[1], axis=None)
+    ind = np.argsort(smoothed_connectomes[1], axis=None)
     ind1 = ind // 148
     ind2 = ind % 148
     n_ind = 6
