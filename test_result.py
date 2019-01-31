@@ -12,14 +12,27 @@ if __name__ == '__main__':
     smoothed_connectomes = readMatricesFromDirectory(os.path.join(data_dir, sub+'_smoothed'), False)
     A = []
     S = []
-    ind = np.argsort(smoothed_connectomes[1], axis=None)
+    ind = np.argsort(connectome_list[1], axis=None)
     ind1 = ind // 148
     ind2 = ind % 148
-    n_ind = 6
+    n_ind = 3
     offset = 0
     max_five_ind = zip(ind1[len(ind1) - n_ind - offset: len(ind1) - offset],
                        ind2[len(ind1) - n_ind - offset: len(ind1) - offset])
     count = 1
+
+    for a, b in max_five_ind:
+        for t in range(0, 3):
+            S = smoothed_connectomes[t][a, :]
+            A = connectome_list[t][a, :]
+            print("S sum:", sum(S))
+            plt.subplot(3, 3, count)
+            plt.ylim(0, 1)
+            plt.plot(A, color='red')
+            plt.plot(S, color='blue')
+            count = count + 1
+
+    '''
     for a, b in max_five_ind:
         S = []
         A = []
@@ -32,5 +45,5 @@ if __name__ == '__main__':
         plt.plot(A, color='red')
         plt.plot(S, color='blue')
         count = count + 1
-
+    '''
     plt.show()

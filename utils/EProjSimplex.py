@@ -1,6 +1,5 @@
 from utils.helper import get_gamma, get_eigen
 from utils.L2_distance import *
-from utils.readFile import *
 from utils.create_brain_net_files import *
 from args import Args
 from compare_network import get_number_of_components
@@ -23,27 +22,27 @@ def EProjSimplex(v, k = 1):
     if vmin < 0:
         sum_pos = 1
         lambda_m = 0
-        while abs(sum_pos) > 0.00000000001:
+        while abs(sum_pos) > 10e-10:
             v1 = v0 - lambda_m
             posidx = v1 > 0
             npos = sum(posidx)
             sum_pos = sum(v1[posidx]) - k
             lambda_m = lambda_m + sum_pos/npos
             ft = ft + 1
-            if ft > 100:
+            if ft > 500:
                 break
-
-        x = [v1[i] if v1[i] >= 0 else 0 for i in range(0, n)]
+        x = np.maximum(v1, 0)
     else:
         x = v0
 
+    x /= sum(x)
     return x, ft
 
 
 if __name__ == '__main__':
-    v = [0.1, 0.2, 0.3, 0.4]
-    print('result: ', EProjSimplex(np.asarray(v) / 6))
-    print('result: ', EProjSimplex((np.asarray(v) - 10) / 6))
+    v = [1, 2, 3, 4, 6, 5]
+    print(v)
+    print(EProjSimplex(v))
 
     # Read data
     data_dir = os.path.join(os.path.join(os.path.dirname(os.getcwd()), os.pardir), 'AD-Data_Organized')
@@ -73,16 +72,16 @@ if __name__ == '__main__':
 
         # Modularity constraint optimization
 
+        lmd = 0.1
         for itr in range(0, args.n_iter):
             if args.debug:
                 print("Iteration: ", itr)
-            S = (np.transpose(S) + S) / 2
+            S = (S.T + S) / 2
             D_S = np.diag(S.sum(axis=1))
             L = D_S - S
             eig_val, F = get_eigen(L, args.n_module)
             dF = L2_distance(np.transpose(F), np.transpose(F))
 
-            lmd = 0.1
             d = dX + lmd * dF
             gamma = get_gamma(d, args.k)
             S_old = S
@@ -92,8 +91,13 @@ if __name__ == '__main__':
 
                 if args.debug:
                     print("Change: ", abs(S - S_old).sum()/S_old.sum())
-
-        smoothed_connectomes.append((S + S.T)/2)
+            n_com_, _ = get_number_of_components([S])
+            if n_com_[0] < args.n_module:
+                lmd = lmd * 2
+            elif n_com_[0] > args.n_module:
+                lmd = lmd/2
+        S = (S.T + S)/2
+        smoothed_connectomes.append(S)
 
         with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
             np.savetxt(out, S)
@@ -105,3 +109,5 @@ if __name__ == '__main__':
     print("\nNumber of component: ", n_comp_)
     #create_brain_net_node_files(sub, label_list)
     #create_brain_net_node_files(sub + "_smoothed", label_list)
+
+

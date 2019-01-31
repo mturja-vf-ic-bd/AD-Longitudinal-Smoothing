@@ -39,9 +39,15 @@ def optimize_longitudinal_connectomes(connectome_list):
                 vv, _ = EProjSimplex.EProjSimplex(-dI[j] / gamma[j])
                 S_new[j] = vv
 
+            S_new = (S_new.T + S_new)/2
             smoothed_connectomes[t] = np.asarray(S_new)
 
         smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
+
+        if sum(eig_val[:args.n_module]) > 0.0001:
+            args.mu = args.mu * 2
+        elif sum(eig_val[:args.n_module + 1]) < 0.0001:
+            args.mu = args.mu / 2
 
     return smoothed_connectomes
 
@@ -66,6 +72,6 @@ if __name__ == "__main__":
     print("\nNumber of component: ", n_comp_)
     n_comp_, label_list = get_number_of_components(smoothed_connectomes)
     print("\nNumber of component: ", n_comp_)
-    create_brain_net_node_files(sub, label_list)
-    create_brain_net_node_files(sub + "_smoothed", label_list)
+    #create_brain_net_node_files(sub, label_list)
+    #create_brain_net_node_files(sub + "_smoothed", label_list)
 

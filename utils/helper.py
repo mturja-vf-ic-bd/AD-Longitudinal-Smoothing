@@ -47,7 +47,7 @@ def get_eigen(L, c):
 def get_gamma(d, k):
     d_new = copy.deepcopy(d)
     d_new.sort(axis=1)
-    return np.array(0.5 * (k * d_new[:, k] - d_new[:, 0:k].sum(axis=1)))
+    return np.array(0.5 * (k * d_new[:, k+1] - d_new[:, 1:k+1].sum(axis=1)))
 
 
 def get_data_folder(subject):
