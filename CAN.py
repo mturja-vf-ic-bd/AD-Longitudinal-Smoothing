@@ -46,9 +46,11 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
     if r < 0:
         r = np.mean(rr)
 
-    lmd = 0.5
+    lmd = 2
 
     A0 = (A + A.T) / 2
+    row_sum = A0.sum(axis=1)
+    A0 /= row_sum[:, np.newaxis]
     D0 = np.diag(A0.sum(axis=1))
     L0 = D0 - A0
     evs, F = get_eigen(L0, c + 1)  # Taking c + 1 eig values
@@ -70,8 +72,12 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
             dfi = distF[i, idxa0]
             dxi = distX[i, idxa0]
             ad = - (dxi + lmd * dfi) / (2 * r)
-            A[i, idxa0], _ = EProjSimplex(ad)
+            res, _ = EProjSimplex(ad)
+            res /= sum(np.real(res))
+            A[i, idxa0] = np.real(res)
 
+        row_sum = A.sum(axis=1)
+        A /= row_sum[:, np.newaxis]
         A = (A + A.T) / 2
         D = np.diag(A.sum(axis=1))
         L = D - A
@@ -109,6 +115,8 @@ if __name__ == '__main__':
         A = A + np.identity(len(A))
         dX = 1 - A
         S, _ = CAN(dX, args.n_module, args.k, islocal=True)
+        row_sum = S.sum(axis=1)
+        S /= row_sum[:, np.newaxis]
         S = (S.T + S)/2
         smoothed_connectomes.append(S)
 

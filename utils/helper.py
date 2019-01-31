@@ -63,9 +63,16 @@ def get_coordinates(subject):
 
     return coord
 
+def row_normalize(A):
+    A = np.asarray(A)
+    row_sum = A.sum(axis=1) + 10e-10
+    A = A / row_sum[:, np.newaxis]
+    return A
 
 if __name__ == '__main__':
     mat = np.array([[1, 2, 3], [5, 1, 6], [11, 13, 9]])
     gamma = get_gamma(mat, 1)
     print(gamma)
     # Add more test
+
+    print(row_normalize(mat))

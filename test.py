@@ -12,16 +12,36 @@ def optimize_longitudinal_connectomes(connectome_list):
     args = Args(c_dim)
     rbf_fit = RBF(args.rbf_sigma, args.lambda_m, args.debug)
     wt_local = [np.ones(args.c_dim) / len(connectome_list)for i in range(0, len(connectome_list))]
+    k = args.k
+    DX = []
+    smoothed_connectomes = []
+    for t in range(0, len(connectome_list)):
+        A = connectome_list[t]
+        A = A + np.identity(len(A))
+        distX = 1 - A
+        DX.append(distX)
 
-    smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(connectome_list)
+    # Initialization
+    for distX in DX:
+        num = distX.shape[0]
+        distX1 = np.sort(distX, axis=1)
+        idx = np.argsort(distX, axis=1)
+        A = np.zeros((num, num))
+        rr = get_gamma(distX, k)
+        r = np.mean(rr)
+        lmd = r
+        eps = 10e-10
+        for i in range(0, num):
+            A[i, idx[i, 1: k + 2]] = 2 * (distX1[i, k + 1] - distX1[i, 1: k + 2]) / (rr[i] + eps)
 
+        A = row_normalize(A)
+        smoothed_connectomes.append(A)
+
+    # Iteration
     for i in range(0, args.n_iter):
         print("Iteration: ", i)
         M = find_mean(smoothed_connectomes, wt_local)  # link-wise mean of the connectomes
         M = 0.5 * np.add(M, M.T)
-        wt_local = [np.exp(-np.exp(np.subtract(smoothed_connectome, M)) / (args.rbf_sigma ** 2))
-                    for smoothed_connectome in smoothed_connectomes]  # get weight W for each connectome
-
         D = np.diag(M.sum(axis=1))
         L = np.subtract(D, M)
         eig_val, F = get_eigen(L, args.n_module)
@@ -38,24 +58,31 @@ def optimize_longitudinal_connectomes(connectome_list):
             np.fill_diagonal(dM, 0)
 
             dI = dX + dS + \
-                 np.multiply(args.beta, np.add(dM, args.mu * dF))
+                 dM + lmd * dF
 
             gamma = get_gamma(dI, args.k)
+            r = np.mean(gamma)
+            lmd = r
             S_new = np.zeros(args.c_dim)
             for j in range(0, args.c_dim[0]):
-                vv, _ = EProjSimplex.EProjSimplex(-dI[j] / np.mean(gamma))
+                vv, _ = EProjSimplex.EProjSimplex(-dI[j] / gamma[j])
                 S_new[j] = vv
 
-            S_new = (S_new.T + S_new)/2
             np.fill_diagonal(S_new, 0)
+            S_new = row_normalize(S_new)
+            S_new = (S_new.T + S_new)/2
             smoothed_connectomes[t] = np.asarray(S_new)
 
-        #smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
+        smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
+        for t in range(0, len(smoothed_connectomes)):
+            smoothed_connectomes[t] = row_normalize(smoothed_connectomes[t])
 
         if sum(eig_val[:args.n_module]) > 0.0001:
-            args.mu = args.mu * 2
+            lmd = lmd * 2
         elif sum(eig_val[:args.n_module + 1]) < 0.0001:
-            args.mu = args.mu / 2
+            lmd = lmd / 2
+        else:
+            break
 
     return smoothed_connectomes
 
