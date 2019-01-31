@@ -30,19 +30,27 @@ def optimize_longitudinal_connectomes(connectome_list):
 
         for t in range(0, len(smoothed_connectomes)):
             dX = (1 - connectome_list[t])
-            dI = dX + (1 - smoothed_connectomes[t]) + \
-                 np.multiply(args.beta, np.add((1 - M), args.mu * dF))
+            dS = (1 - smoothed_connectomes[t])
+            dM = (1 - M)
+
+            np.fill_diagonal(dX, 0)
+            np.fill_diagonal(dS, 0)
+            np.fill_diagonal(dM, 0)
+
+            dI = dX + dS + \
+                 np.multiply(args.beta, np.add(dM, args.mu * dF))
 
             gamma = get_gamma(dI, args.k)
             S_new = np.zeros(args.c_dim)
             for j in range(0, args.c_dim[0]):
-                vv, _ = EProjSimplex.EProjSimplex(-dI[j] / gamma[j])
+                vv, _ = EProjSimplex.EProjSimplex(-dI[j] / np.mean(gamma))
                 S_new[j] = vv
 
             S_new = (S_new.T + S_new)/2
+            np.fill_diagonal(S_new, 0)
             smoothed_connectomes[t] = np.asarray(S_new)
 
-        smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
+        #smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
 
         if sum(eig_val[:args.n_module]) > 0.0001:
             args.mu = args.mu * 2
@@ -57,7 +65,6 @@ if __name__ == "__main__":
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
     sub = '027_S_4926'
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
-
 
     smoothed_connectomes = optimize_longitudinal_connectomes(connectome_list)
     output_dir = os.path.join(data_dir, sub + '_smoothed')

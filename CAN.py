@@ -21,9 +21,9 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
         evs: eigenvalues of learned graph Laplacian in the iterations
     """
 
-    NITER = 30
     num = distX.shape[0]
     arg = Args()
+    NITER = arg.n_iter
 
     if arg.debug:
         print('\nInitial Parameters:',
@@ -44,7 +44,7 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
         A[i, idx[i, 1: k + 2]] = 2 * (distX1[i, k + 1] - distX1[i, 1: k + 2]) / (rr[i] + eps)
 
     if r < 0:
-        r = np.average(rr)
+        r = np.mean(rr)
 
     lmd = 0.5
 
@@ -52,7 +52,7 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
     D0 = np.diag(A0.sum(axis=1))
     L0 = D0 - A0
     evs, F = get_eigen(L0, c + 1)  # Taking c + 1 eig values
-    F = F[:, 1:c + 1]  # removing last one
+    F = F[:, 0:c]  # removing last one
     ev = []
     if sum(evs) < 10e-10:
         raise Exception('The number of connected component in the graph is greater than {}', c)
@@ -79,7 +79,7 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
 
         evs, F = get_eigen(L, c + 1)
         ev.append(evs)
-        F = F[:, 1:c + 1]  # removing last one
+        F = F[:, 0:c]  # removing last one
 
         if sum(evs[0:c]) > 10e-10:
             lmd = 2 * lmd
@@ -108,7 +108,8 @@ if __name__ == '__main__':
         A = connectome_list[t]
         A = A + np.identity(len(A))
         dX = 1 - A
-        S, _ = CAN(A, args.n_module, args.k, islocal=False)
+        S, _ = CAN(dX, args.n_module, args.k, islocal=True)
+        S = (S.T + S)/2
         smoothed_connectomes.append(S)
 
         print("\nAverage number of non zero elements per row before optimizing: ", (A > 0).sum() / 148,

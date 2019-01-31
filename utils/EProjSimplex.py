@@ -18,7 +18,6 @@ def EProjSimplex(v, k = 1):
     v = np.asarray(v)
     v0 = v - np.mean(v) + k/n
     vmin = min(v0)
-
     if vmin < 0:
         sum_pos = 1
         lambda_m = 0
@@ -35,7 +34,6 @@ def EProjSimplex(v, k = 1):
     else:
         x = v0
 
-    x /= sum(x)
     return x, ft
 
 

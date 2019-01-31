@@ -15,7 +15,8 @@ def readMatrixFromTextFile(fname, debug=False):
     a = np.asarray(a)
     return a
 
-def readMatricesFromDirectory(directory, normailze=True):
+
+def readMatricesFromDirectory(directory, normalize=True):
     files = [f for f in os.listdir(directory)]
     mat_list = []
     for file in files:
@@ -25,9 +26,10 @@ def readMatricesFromDirectory(directory, normailze=True):
         elif os.path.isfile(file):
             print("Reading ", file)
             a = readMatrixFromTextFile(join(directory, file))
-            if normailze:
-                a /= a.sum(axis=1)
+            if normalize:
                 a = (a + np.transpose(a)) / 2
+                row_sums = a.sum(axis=1)
+                a /= row_sums[:, np.newaxis]
             mat_list.append(a)
         else:
             print(file, " is weird")
