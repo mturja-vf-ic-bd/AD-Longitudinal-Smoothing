@@ -30,7 +30,6 @@ if __name__ == '__main__':
                        ind2[len(ind1) - n_ind - offset: len(ind1) - offset])
     count = 1
 
-
     for a, b in max_five_ind:
         for t in range(0, 3):
             S = smoothed_connectomes[t][a, :]
@@ -40,7 +39,7 @@ if __name__ == '__main__':
             plt.subplot(3, 3, count)
             plt.ylim(0, 1)
             plt.plot(A, color='red')
-            plt.plot(S, color='blue')
+            #plt.plot(S, color='blue')
             count = count + 1
 
     '''
