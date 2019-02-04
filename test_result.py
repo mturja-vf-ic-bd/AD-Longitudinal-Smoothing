@@ -7,7 +7,7 @@ import json
 if __name__ == '__main__':
     args = Args()
     data_dir = os.path.join(os.path.dirname(args.root_directory), 'AD-Data_Organized')
-    sub = '027_S_4926'
+    sub = '027_S_2336'
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
     smoothed_connectomes = readMatricesFromDirectory(os.path.join(data_dir, sub+'_smoothed'), False)
     args = Args()
@@ -23,14 +23,14 @@ if __name__ == '__main__':
         plt.subplot(1, 2, 2)
         plt.imshow(smoothed_connectomes[t])
         #plt.colorbar()
-        plt.show()
+        #plt.show()
         fig.savefig("matplt" + str(t) + ".pdf", bbox_inches='tight')
     # Reading parcellation table to get the coordinates of each region
     with open(file_parcellation_table) as f:
         table = json.load(f)
     A = []
     S = []
-    ind = np.argsort(connectome_list[0], axis=None)
+    ind = np.argsort(connectome_list[2], axis=None)
     ind1 = ind // 148
     ind2 = ind % 148
     n_ind = 3
@@ -39,7 +39,9 @@ if __name__ == '__main__':
                        ind2[len(ind1) - n_ind - offset: len(ind1) - offset])
     count = 1
 
-
+    fig = plt.gcf()
+    fig.set_size_inches(25, 15)
+    fig.savefig('test2png.png', dpi=100)
     for a, b in max_five_ind:
         print("a = ", table[a]["name"],
               "b = ", table[b]["name"])
@@ -48,13 +50,13 @@ if __name__ == '__main__':
         else:
             print("Connection type: Inter hemispheric")
 
-        for t in range(0, 3):
+        for t in range(0, len(connectome_list)):
             S = smoothed_connectomes[t][a, :]
             A = connectome_list[t][a, :]
             print("\nA sum: ", sum(A),
                   "\nS sum:", sum(S))
-            plt.subplot(3, 3, count)
-            if t < 1:
+            plt.subplot(3, len(connectome_list), count)
+            if t == 1:
                 plt.title(table[a]["name"] + "_" + str(a // 74) + " to \n" + table[b]["name"]
                       + "_" + str(b // 74))
             plt.ylim(0, 1)

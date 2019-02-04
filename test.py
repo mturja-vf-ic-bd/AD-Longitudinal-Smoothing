@@ -39,8 +39,8 @@ def optimize_longitudinal_connectomes(connectome_list):
         lmd = r
         eps = 10e-10
         for i in range(0, num):
-            # A[i, idx[i, 1: k + 1]] = -distX1[i, 1: k + 1]/(2 * rr[i] + eps) + 1/k + 1/(2*k*rr[i]) * distX1[i, 1:k+1].sum()
-            A[i, idx[i, 1: k + 2]] = 2 * (distX1[i, k + 1] - distX1[i, 1: k + 2]) / (rr[i] + eps)
+            A[i, idx[i, 1: k + 1]] = -distX1[i, 1: k + 1]/(2 * rr[i] + eps) + 1/k + 1/(2*k*rr[i]) * distX1[i, 1:k+1].sum()
+            #A[i, idx[i, 1: k + 2]] = 2 * (distX1[i, k + 1] - distX1[i, 1: k + 2]) / (rr[i] + eps)
 
         np.fill_diagonal(A, 0)
         A = (A.T + A)/2
@@ -70,8 +70,8 @@ def optimize_longitudinal_connectomes(connectome_list):
             dS = dS + diag_dist_factor * np.diag(np.diag(A.sum(axis=1)))
             dM = dM + diag_dist_factor * np.diag(np.diag(A.sum(axis=1)))
 
-            dI = dX + dS \
-                 + np.multiply(wt_local[t], dM) + np.multiply(lmd, dF)
+            dI = 1000 * dX + 10 * dS \
+                 + 10 * np.multiply(wt_local[t], dM) + np.multiply(lmd, dF)
 
             gamma = get_gamma(dI, args.k)
             r = np.mean(gamma)
@@ -85,15 +85,19 @@ def optimize_longitudinal_connectomes(connectome_list):
             S_new = row_normalize(S_new)
             smoothed_connectomes[t] = np.array(S_new)
 
-        #smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
+        smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
+
         for t in range(0, len(smoothed_connectomes)):
             smoothed_connectomes[t] = row_normalize(smoothed_connectomes[t])
+            wt_local[t] = np.exp(-(smoothed_connectomes[t] - M) ** 2)
 
-        if sum(eig_val[:args.n_module]) > eps and lmd < 20:
+        if sum(eig_val[:args.n_module]) > eps and lmd < 300:
             lmd = lmd * 2
-        elif sum(eig_val[:args.n_module + 1]) < eps and lmd > 0.1:
+        elif sum(eig_val[:args.n_module + 1]) < eps and lmd > 0.01:
             lmd = lmd / 2
             F = F_old
+        else:
+            break
 
         print("lamda: ", lmd)
 
@@ -103,7 +107,7 @@ def optimize_longitudinal_connectomes(connectome_list):
 if __name__ == "__main__":
     # Read data
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
-    sub = '027_S_4926'
+    sub = '027_S_2336'
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
 
     smoothed_connectomes = optimize_longitudinal_connectomes(connectome_list)
