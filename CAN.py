@@ -31,7 +31,7 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
               '\nk = ', k,
               '\nr = ', r,
               '\nislocal = ', islocal,
-              '\n dimension = ', num,
+              '\ndimension = ', num,
               '\nNITER = ', NITER)
 
     distX1 = np.sort(distX, axis=1)
@@ -46,11 +46,10 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
     if r < 0:
         r = np.mean(rr)
 
-    lmd = 2
+    lmd = 0.5
 
     A0 = (A + A.T) / 2
-    row_sum = A0.sum(axis=1)
-    A0 /= row_sum[:, np.newaxis]
+    A0 = row_normalize(A0)
     D0 = np.diag(A0.sum(axis=1))
     L0 = D0 - A0
     evs, F = get_eigen(L0, c + 1)  # Taking c + 1 eig values
@@ -76,9 +75,9 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
             res /= sum(np.real(res))
             A[i, idxa0] = np.real(res)
 
-        row_sum = A.sum(axis=1)
-        A /= row_sum[:, np.newaxis]
+        np.fill_diagonal(A, 0)
         A = (A + A.T) / 2
+        A = row_normalize(A)
         D = np.diag(A.sum(axis=1))
         L = D - A
         F_old = F
@@ -94,6 +93,7 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
             F = F_old
         else:
             break
+        print("lamda = ", lmd)
 
     return A, ev
 
@@ -114,10 +114,9 @@ if __name__ == '__main__':
         A = connectome_list[t]
         A = A + np.identity(len(A))
         dX = 1 - A
-        S, _ = CAN(dX, args.n_module, args.k, islocal=True)
-        row_sum = S.sum(axis=1)
-        S /= row_sum[:, np.newaxis]
+        S, _ = CAN(dX, args.n_module, k=args.k, islocal=True)
         S = (S.T + S)/2
+        S = row_normalize(S)
         smoothed_connectomes.append(S)
 
         print("\nAverage number of non zero elements per row before optimizing: ", (A > 0).sum() / 148,

@@ -9,6 +9,9 @@ def get_right_hemisphere(wb):
     n = len(wb)
     return wb[n//2:n, n//2:n]
 
+def get_hemispheres(wb):
+    return get_left_hemisphere(wb), get_right_hemisphere(wb)
+
 
 if __name__ == '__main__':
     data_dir = '/home/turja/AD-Data_Organized'

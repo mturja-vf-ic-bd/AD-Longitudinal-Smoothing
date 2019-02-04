@@ -27,7 +27,7 @@ def find_mean(mat_list, weights):
     for w in weights:
         total_weight = np.add(w, total_weight)
 
-    weighted_mat_list = [np.divide(np.multiply(np.asarray(mat_list[i]), np.asarray(weights[i])), total_weight) for i in range(0, len(mat_list))]
+    weighted_mat_list = [np.divide(np.multiply(np.array(mat_list[i]), np.array(weights[i])), total_weight) for i in range(0, len(mat_list))]
     avg = np.zeros(mat_list[0].shape)
 
     for wm in weighted_mat_list:
@@ -64,7 +64,7 @@ def get_coordinates(subject):
     return coord
 
 def row_normalize(A):
-    A = np.asarray(A)
+    A = np.array(A)
     row_sum = A.sum(axis=1) + 10e-10
     A = A / row_sum[:, np.newaxis]
     return A
@@ -75,4 +75,5 @@ if __name__ == '__main__':
     print(gamma)
     # Add more test
 
-    print(row_normalize(mat))
+    row_normalize(mat)
+    print(mat)
