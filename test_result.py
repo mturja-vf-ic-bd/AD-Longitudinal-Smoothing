@@ -25,22 +25,23 @@ if __name__ == '__main__':
         #plt.colorbar()
         #plt.show()
         fig.savefig("matplt" + str(t) + ".pdf", bbox_inches='tight')
+
     # Reading parcellation table to get the coordinates of each region
     with open(file_parcellation_table) as f:
         table = json.load(f)
     A = []
     S = []
-    ind = np.argsort(connectome_list[2], axis=None)
+    ind = np.argsort(connectome_list[1], axis=None)
     ind1 = ind // 148
     ind2 = ind % 148
     n_ind = 3
-    offset = 0
+    offset = 200
     max_five_ind = zip(ind1[len(ind1) - n_ind - offset: len(ind1) - offset],
                        ind2[len(ind1) - n_ind - offset: len(ind1) - offset])
     count = 1
 
     fig = plt.gcf()
-    fig.set_size_inches(25, 15)
+    fig.set_size_inches(30, 15)
     fig.savefig('test2png.png', dpi=100)
     for a, b in max_five_ind:
         print("a = ", table[a]["name"],

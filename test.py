@@ -1,13 +1,8 @@
-from typing import List
-
-from numpy.core.multiarray import ndarray
-
 from rbf import *
 from utils.create_brain_net_files import *
 from utils.helper import *
 from utils.L2_distance import *
 from utils import EProjSimplex, get_hemisphere
-from bct.utils import visualization
 from args import Args
 
 
@@ -46,7 +41,7 @@ def optimize_longitudinal_connectomes(connectome_list):
         A = (A.T + A)/2
         A = row_normalize(A)
         smoothed_connectomes.append(A)
-    #smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(connectome_list)
+
     F = None
     # Iteration
     for i in range(0, args.n_iter):
@@ -70,8 +65,8 @@ def optimize_longitudinal_connectomes(connectome_list):
             dS = dS + diag_dist_factor * np.diag(np.diag(A.sum(axis=1)))
             dM = dM + diag_dist_factor * np.diag(np.diag(A.sum(axis=1)))
 
-            dI = 1000 * dX + 10 * dS \
-                 + 10 * np.multiply(wt_local[t], dM) + np.multiply(lmd, dF)
+            dI = args.dfw * dX + args.sw * dS \
+                + args.lmw * np.multiply(wt_local[t], dM) + np.multiply(lmd, dF)
 
             gamma = get_gamma(dI, args.k)
             r = np.mean(gamma)
@@ -81,23 +76,21 @@ def optimize_longitudinal_connectomes(connectome_list):
                 S_new[j] = vv
 
             np.fill_diagonal(S_new, 0)
-            S_new = (S_new.T + S_new)/2
-            S_new = row_normalize(S_new)
+            #S_new = (S_new.T + S_new)/2
+            #S_new = row_normalize(S_new)
             smoothed_connectomes[t] = np.array(S_new)
 
-        smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
+        #smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
 
         for t in range(0, len(smoothed_connectomes)):
             smoothed_connectomes[t] = row_normalize(smoothed_connectomes[t])
             wt_local[t] = np.exp(-(smoothed_connectomes[t] - M) ** 2)
 
-        if sum(eig_val[:args.n_module]) > eps and lmd < 300:
+        if sum(eig_val[:args.n_module]) > eps and lmd < args.lmd_cut:
             lmd = lmd * 2
-        elif sum(eig_val[:args.n_module + 1]) < eps and lmd > 0.01:
+        elif sum(eig_val[:args.n_module + 1]) < eps and lmd > 0.1:
             lmd = lmd / 2
             F = F_old
-        else:
-            break
 
         print("lamda: ", lmd)
 

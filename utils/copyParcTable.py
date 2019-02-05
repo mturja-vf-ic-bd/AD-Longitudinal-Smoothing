@@ -4,16 +4,16 @@ from shutil import copyfile
 import json
 
 if __name__ == '__main__':
-    with open('/playpen/mturja/AD-Data_mapping.csv', 'r') as map:
+    with open('/home/turja/AD-Data_mapping.csv', 'r') as map:
         csv_reader = csv.reader(map, delimiter=',')
         line_count = 0
-        base_dir = '/playpen/mturja'
+        base_dir = '/home/turja'
         id_to_scan_map = dict()
         for row in csv_reader:
             if line_count > 0:
                 if not row[1] in id_to_scan_map.keys():
                     id_to_scan_map[row[1]] = row[0]
-                    source = base_dir + '/sub/' + row[0] + '/parcellationTable.json'
+                    source = base_dir + '/Desktop/sub/' + row[0] + '/parcellationTable.json'
                     destination = base_dir + '/AD-Data_Organized/' + row[1] + '/helper_files/'
                     destination_smooth = base_dir + '/AD-Data_Organized/' + row[1] + '_smoothed/helper_files/'
                     if not os.path.exists(destination):
