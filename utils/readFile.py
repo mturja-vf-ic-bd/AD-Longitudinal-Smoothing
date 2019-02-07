@@ -18,6 +18,7 @@ def readMatrixFromTextFile(fname, debug=False):
 
 def readMatricesFromDirectory(directory, normalize=True):
     files = [f for f in os.listdir(directory)]
+    files.sort()
     mat_list = []
     for file in files:
         file = os.path.join(directory, file)

@@ -14,11 +14,11 @@ class Args:
         self.mu = 0.5
         self.r = 2
         self.k = 60  # number of non-zero elements in each row of the connectome matrix
-        self.root_directory = "/home/turja/AD-Longitudinal-Smoothing"
+        self.root_directory = "/playpen/mturja/AD-Longitudinal-Smoothing"
 
         # loss function weights for different terms like: data fitting
         self.dfw = 300
-        self.sw = 10
-        self.lmw = 10
+        self.sw = 50
+        self.lmw = 50
 
-        self.lmd_cut = 200
+        self.lmd_cut = 500

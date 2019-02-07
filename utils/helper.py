@@ -22,7 +22,9 @@ def group_elements_of_matrices(input_mat_list):
     return element_list
 
 
-def find_mean(mat_list, weights):
+def find_mean(mat_list, weights=None):
+    if weights == None and len(mat_list) > 0:
+        weights = [np.ones(mat_list[0].shape) for i in range(0, len(mat_list))]
     total_weight = np.zeros(mat_list[0].shape)
     for w in weights:
         total_weight = np.add(w, total_weight)

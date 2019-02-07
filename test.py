@@ -4,6 +4,7 @@ from utils.helper import *
 from utils.L2_distance import *
 from utils import EProjSimplex, get_hemisphere
 from args import Args
+from test_result import test_result
 
 
 def optimize_longitudinal_connectomes(connectome_list):
@@ -13,7 +14,7 @@ def optimize_longitudinal_connectomes(connectome_list):
     wt_local = [np.ones(args.c_dim) for i in range(0, len(connectome_list))]
     k = args.k
     DX = []
-    diag_dist_factor = 1
+    diag_dist_factor = 3
     smoothed_connectomes = []
     for t in range(0, len(connectome_list)):
         A = connectome_list[t]
@@ -75,12 +76,12 @@ def optimize_longitudinal_connectomes(connectome_list):
                 vv, _ = EProjSimplex.EProjSimplex(-dI[j] / r)
                 S_new[j] = vv
 
-            np.fill_diagonal(S_new, 0)
+            #np.fill_diagonal(S_new, 0)
             #S_new = (S_new.T + S_new)/2
             #S_new = row_normalize(S_new)
             smoothed_connectomes[t] = np.array(S_new)
 
-        #smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
+        smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
 
         for t in range(0, len(smoothed_connectomes)):
             smoothed_connectomes[t] = row_normalize(smoothed_connectomes[t])
@@ -94,7 +95,7 @@ def optimize_longitudinal_connectomes(connectome_list):
 
         print("lamda: ", lmd)
 
-    return smoothed_connectomes
+    return smoothed_connectomes, M
 
 
 if __name__ == "__main__":
@@ -103,7 +104,7 @@ if __name__ == "__main__":
     sub = '027_S_2336'
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
 
-    smoothed_connectomes = optimize_longitudinal_connectomes(connectome_list)
+    smoothed_connectomes, M = optimize_longitudinal_connectomes(connectome_list)
     output_dir = os.path.join(data_dir, sub + '_smoothed')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -112,10 +113,19 @@ if __name__ == "__main__":
         with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
             np.savetxt(out, smoothed_connectomes[t])
 
+    with open(os.path.join(output_dir, sub + "_smoothed_u"), 'w') as out:
+        np.savetxt(out, M)
+
+
     n_comp_, label_list = get_number_of_components(connectome_list)
     print("\nNumber of component: ", n_comp_)
     n_comp_, label_list = get_number_of_components(smoothed_connectomes)
     print("\nNumber of component: ", n_comp_)
     #create_brain_net_node_files(sub, label_list)
     #create_brain_net_node_files(sub + "_smoothed", label_list)
+
+    connectome_list.append(find_mean(connectome_list))
+    smoothed_connectomes.append(M)
+
+    test_result(sub, connectome_list, smoothed_connectomes)
 
