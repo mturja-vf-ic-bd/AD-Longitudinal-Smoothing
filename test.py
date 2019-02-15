@@ -7,104 +7,110 @@ from args import Args
 from test_result import test_result
 
 
-def optimize_longitudinal_connectomes(connectome_list):
+def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, diag_dist_factor=0, r=-1, islocal=True):
     c_dim = connectome_list[0].shape
     args = Args(c_dim)
     rbf_fit = RBF(args.rbf_sigma, args.lambda_m, args.debug)
     wt_local = [np.ones(args.c_dim) for i in range(0, len(connectome_list))]
     k = args.k
-    DX = []
-    diag_dist_factor = 3
     smoothed_connectomes = []
-    for t in range(0, len(connectome_list)):
-        A = connectome_list[t]
-        distX = 1 - A
-        #np.fill_diagonal(distX, diag_dist_factor)
-        distX = distX + diag_dist_factor * np.diag(np.diag(A.sum(axis=1)))
-        DX.append(distX)
 
+    eps = 10e-10
     # Initialization
+    rt = []
 
-    for distX in DX:
-        num = distX.shape[0]
+    num = c_dim[0]
+    idx_list = []
+    for cn in connectome_list:
+        distX = (1 - cn)
+        distX = distX + np.diag(np.ones(num) * eps)
         distX1 = np.sort(distX, axis=1)
         idx = np.argsort(distX, axis=1)
+        idx_list.append(idx)
         A = np.zeros((num, num))
-        rr = get_gamma(distX, k)
-        r = np.mean(rr)
+        if r < 0:
+            rr = get_gamma(distX, k)
+            r = np.mean(rr)
+        rt.append(r)
         lmd = r
-        eps = 10e-10
         for i in range(0, num):
-            A[i, idx[i, 1: k + 1]] = -distX1[i, 1: k + 1]/(2 * rr[i] + eps) + 1/k + 1/(2*k*rr[i]) * distX1[i, 1:k+1].sum()
-            #A[i, idx[i, 1: k + 2]] = 2 * (distX1[i, k + 1] - distX1[i, 1: k + 2]) / (rr[i] + eps)
+            A[i, idx[i, 0: k]] = 2 * (distX1[i, k] - distX1[i, 0: k]) / (r + eps)
 
-        np.fill_diagonal(A, 0)
-        A = (A.T + A)/2
-        A = row_normalize(A)
-        smoothed_connectomes.append(A)
+        smoothed_connectomes.append(row_normalize(A))
+
+    smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
 
     F = None
     # Iteration
     for i in range(0, args.n_iter):
-        print("Iteration: ", i)
+        if args.debug:
+            print("Iteration: ", i)
+
         M = find_mean(smoothed_connectomes, wt_local)  # link-wise mean of the connectomes
         M = 0.5 * np.add(M, M.T)
-        M = row_normalize(M)
+        M = np.clip(M, 0, 1)
         D = np.diag(M.sum(axis=1))
         L = np.subtract(D, M)
-        dM = (1 - M) ** 2
+        dM = (1 - M)
         F_old = F
+        #n_modes = get_n_modes(M, threshold=0.99)
+        #print("Number of modes: ", n_modes)
         eig_val, F = get_eigen(L, args.n_module)
 
         dF = L2_distance(np.transpose(F), np.transpose(F))
+        #dF = np.sqrt((dF >= 0) * dF)
+        np.fill_diagonal(dF, 0)
 
+        loss = 0
         for t in range(0, len(smoothed_connectomes)):
-            dX = (1 - connectome_list[t]) ** 2
-            dS = (1 - smoothed_connectomes[t]) ** 2
+            idx = idx_list[t]
+            dX = (1 - connectome_list[t])
+            dS = (1 - np.clip(smoothed_connectomes[t], 0, 1))
+            dI = (dfw * dX + sw * dS
+                  + lmw * dM) / (dfw + sw + lmw) + lmd * dF
 
-            dX = dX + diag_dist_factor * np.diag(np.diag(A.sum(axis=1)))
-            dS = dS + diag_dist_factor * np.diag(np.diag(A.sum(axis=1)))
-            dM = dM + diag_dist_factor * np.diag(np.diag(A.sum(axis=1)))
-
-            dI = args.dfw * dX + args.sw * dS \
-                + args.lmw * np.multiply(wt_local[t], dM) + np.multiply(lmd, dF)
-
-            gamma = get_gamma(dI, args.k)
-            r = np.mean(gamma)
             S_new = np.zeros(args.c_dim)
             for j in range(0, args.c_dim[0]):
-                vv, _ = EProjSimplex.EProjSimplex(-dI[j] / r)
-                S_new[j] = vv
+                if islocal:
+                    idxa0 = idx[j, 0:k]
+                else:
+                    idxa0 = np.arange(num)
 
-            #np.fill_diagonal(S_new, 0)
-            #S_new = (S_new.T + S_new)/2
-            #S_new = row_normalize(S_new)
-            smoothed_connectomes[t] = np.array(S_new)
+                vv, _ = EProjSimplex.EProjSimplex(-dI[j, idxa0] / (2*rt[t]))
+                S_new[j, idxa0] = np.real(vv)
+            np.fill_diagonal(S_new, 0)
+            smoothed_connectomes[t] = row_normalize(S_new)
+            wt_local[t] = np.exp(-((smoothed_connectomes[t] - row_normalize(M)) ** 2) / (args.rbf_sigma ** 2))
+            loss = loss + ((S_new + dI) ** 2).sum()
 
         smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
 
-        for t in range(0, len(smoothed_connectomes)):
-            smoothed_connectomes[t] = row_normalize(smoothed_connectomes[t])
-            wt_local[t] = np.exp(-(smoothed_connectomes[t] - M) ** 2)
-
-        if sum(eig_val[:args.n_module]) > eps and lmd < args.lmd_cut:
+        if sum(eig_val[:args.n_module]) > eps:
             lmd = lmd * 2
-        elif sum(eig_val[:args.n_module + 1]) < eps and lmd > 0.1:
+        elif sum(eig_val[:args.n_module + 1]) < eps:
             lmd = lmd / 2
             F = F_old
+        else:
+            break
 
-        print("lamda: ", lmd)
+        if args.debug:
+            print("lamda: ", lmd)
 
-    return smoothed_connectomes, M
+        print("Loss: ", loss)
+
+    for t in range(0, len(smoothed_connectomes)):
+        smoothed_connectomes[t] = row_normalize(smoothed_connectomes[t])
+
+    return smoothed_connectomes, M, loss
 
 
 if __name__ == "__main__":
     # Read data
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
-    sub = '027_S_2336'
+    sub = '052_S_4944'
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
-
-    smoothed_connectomes, M = optimize_longitudinal_connectomes(connectome_list)
+    args = Args()
+    smoothed_connectomes, M, E = optimize_longitudinal_connectomes(connectome_list, args.dfw, args.sw, args.lmw)
     output_dir = os.path.join(data_dir, sub + '_smoothed')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -113,9 +119,8 @@ if __name__ == "__main__":
         with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
             np.savetxt(out, smoothed_connectomes[t])
 
-    with open(os.path.join(output_dir, sub + "_smoothed_u"), 'w') as out:
-        np.savetxt(out, M)
-
+    #with open(os.path.join(output_dir, sub + "_smoothed_u"), 'w') as out:
+     #   np.savetxt(out, M)
 
     n_comp_, label_list = get_number_of_components(connectome_list)
     print("\nNumber of component: ", n_comp_)
@@ -127,5 +132,4 @@ if __name__ == "__main__":
     connectome_list.append(find_mean(connectome_list))
     smoothed_connectomes.append(M)
 
-    test_result(sub, connectome_list, smoothed_connectomes)
-
+    #test_result(sub, connectome_list, smoothed_connectomes)

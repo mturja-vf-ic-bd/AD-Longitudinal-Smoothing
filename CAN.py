@@ -39,14 +39,17 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
     A = np.zeros((num, num))
     rr = get_gamma(distX, k)
 
-    eps = 10e-10
-    for i in range(0, num):
-        A[i, idx[i, 1: k + 2]] = 2 * (distX1[i, k + 1] - distX1[i, 1: k + 2]) / (rr[i] + eps)
-
     if r < 0:
         r = np.mean(rr)
 
-    lmd = 0.5
+    lmd = np.mean(rr)
+
+    eps = 10e-10
+    for i in range(0, num):
+        A[i, idx[i, 1: k + 2]] = 2 * (distX1[i, k + 1] - distX1[i, 1: k + 2]) / (r + eps)
+
+    print("\nAverage number of non zero elements per row before optimizing: ", (A > 0).sum() / 148,
+          "\nNumber of negative elements: ", (A < 0).sum())
 
     A0 = (A + A.T) / 2
     A0 = row_normalize(A0)
@@ -60,6 +63,7 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
 
     for iter in range(0, NITER):
         distF = L2_distance(F.T, F.T)
+        distF = np.sqrt((distF >= 0) * distF)
         A = np.zeros((num, num))
 
         for i in range(0, num):
@@ -70,10 +74,10 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
 
             dfi = distF[i, idxa0]
             dxi = distX[i, idxa0]
-            ad = - (dxi + lmd * dfi) / (2 * r)
+            d = dxi + lmd * dfi
+            ad = -d / (2 * r)
             res, _ = EProjSimplex(ad)
-            res /= sum(np.real(res))
-            A[i, idxa0] = np.real(res)
+            A[i, idxa0] = res
 
         np.fill_diagonal(A, 0)
         A = (A + A.T) / 2
@@ -93,7 +97,9 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
             F = F_old
         else:
             break
-        print("lamda = ", lmd)
+        print("Iter:", iter,
+              "lambda = ", lmd,
+              "Regularization Parameter r = ", r)
 
     return A, ev
 
@@ -101,7 +107,7 @@ def CAN(distX, c, k=15, r=-1, islocal=True):
 if __name__ == '__main__':
     # Read data
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
-    sub = '027_S_4926'
+    sub = '027_S_2336'
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
     args = Args()
 
@@ -112,15 +118,16 @@ if __name__ == '__main__':
     smoothed_connectomes = []
     for t in range(0, len(connectome_list)):
         A = connectome_list[t]
-        A = A + np.identity(len(A))
-        dX = 1 - A
+        dX = np.sqrt(1 - A)
+        np.fill_diagonal(dX, 2)
         S, _ = CAN(dX, args.n_module, k=args.k, islocal=True)
-        S = (S.T + S)/2
+        #S = (S.T + S)/2
+        np.fill_diagonal(S, 0)
         S = row_normalize(S)
         smoothed_connectomes.append(S)
 
-        print("\nAverage number of non zero elements per row before optimizing: ", (A > 0).sum() / 148,
-              "\nAverage number of non zero elements per row after optimizing : ", (S > 0).sum() / 148)
+        print("\nAverage number of non zero elements before optimizing: ", (A > 0.3).sum(),
+              "\nAverage number of non zero elements after optimizing : ", (S > 0.3).sum())
 
         with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
             np.savetxt(out, S)
@@ -130,6 +137,9 @@ if __name__ == '__main__':
     print("\nNumber of component: ", n_comp_)
     n_comp_, label_list = get_number_of_components(smoothed_connectomes)
     print("\nNumber of component: ", n_comp_)
+
+    #import test_result
+    #test_result.test_result(sub, connectome_list, smoothed_connectomes)
 
 
 
