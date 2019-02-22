@@ -18,11 +18,11 @@ def grid_search(param_set):
     sub = '052_S_4944'
     connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
 
-    E_min = 100000
+    E_min = 1000000000
     ps_min = None
     for ps in param_set:
-        dfw, sw, lmw, dd, r = ps
-        _, _, E = optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, diag_dist_factor=dd, r=r)
+        dfw, sw, lmw, lmd = ps
+        _, _, E = optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, lmd)
         if E < E_min:
             E_min = E
             ps_min = ps
@@ -33,6 +33,6 @@ def grid_search(param_set):
 
 
 if __name__ == '__main__':
-    param_set = [[0.1, 0.3, 0.5, 0.7], [0.1, 0.3, 0.5, 0.7], [0.1, 0.3, 0.5, 0.7], [0], [-1]]
+    param_set = [[0.1, 0.3, 0.5, 0.7, 1], [0.1, 0.3, 0.5, 0.7, 1], [0.1, 0.3, 0.5, 0.7, 1], [0.1, 0.3, 0.5, 0.7, 1]]
     E_min, ps_min = grid_search(param_set)
     print(ps_min)
