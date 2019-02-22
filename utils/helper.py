@@ -72,14 +72,12 @@ def get_gamma(d, k):
     d_new.sort(axis=1)
     return np.array(0.5 * (k * d_new[:, k + 1] - d_new[:, 1:k + 1].sum(axis=1)))
 
-def get_gamma_splitted(d, k, r):
+def get_gamma_splitted(d, K1):
     row, col = d.shape
-    k1 = int(round(r * k))
-    k2 = k - k1
-    rr11 = get_gamma(d[0:row//2, 0:col//2], k1)
-    rr12 = get_gamma(d[0:row//2, col//2:], k2)
-    rr21 = get_gamma(d[row//2:, 0:col//2], k2)
-    rr22 = get_gamma(d[row//2:, col//2:], k1)
+    rr11 = get_gamma(d[0:row//2, 0:col//2], K1[0:row//2])
+    rr12 = get_gamma(d[0:row//2, col//2:], 1 - K1[0:row//2])
+    rr21 = get_gamma(d[row//2:, 0:col//2], K1[row//2:])
+    rr22 = get_gamma(d[row//2:, col//2:], 1 - K1[row//2:])
 
     return rr11, rr12, rr21, rr22
 
@@ -107,12 +105,11 @@ def row_normalize(A):
 def sort_idx2(distX, k, r):
     dim = distX.shape[0]
     idx_11 = np.argsort(distX[0:dim//2, 0:dim//2], axis=1)
-    idx_21 = np.argsort(distX[dim//2:, 0:dim//2], axis=1)
     idx_12 = np.argsort(distX[0:dim//2, dim//2:], axis=1) + dim//2
+    idx_21 = np.argsort(distX[dim//2:, 0:dim//2], axis=1)
     idx_22 = np.argsort(distX[dim//2:, dim//2:], axis=1) + dim//2
-    c = int(round(k * r)) + 1
-    idx = np.vstack((np.hstack((idx_11[:, 0:c], idx_12[:, 0:k+2 - c])), np.hstack((idx_21[:, 0:k+2-c], idx_22[:, 0:c]))))
-    return idx, idx_11[:, 0:c], idx_12[:, 0:k+2-c], idx_21[:, 0:k+2-c], idx_22[:, 0:c]
+    idx = np.vstack((np.hstack((idx_11, idx_12)), np.hstack((idx_21, idx_22))))
+    return idx
 
 def sort_idx(distX, k, r):
     dim = distX.shape[0]

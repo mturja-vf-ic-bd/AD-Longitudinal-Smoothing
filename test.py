@@ -18,7 +18,7 @@ def initialize_connectomes(connectome_list):
     k = Args.k
     smoothed_connectomes = []
 
-    eps = 10e-10
+    eps = 1e-10
     # Initialization
     rt = []
 
@@ -30,7 +30,7 @@ def initialize_connectomes(connectome_list):
     for cn in connectome_list:
         distX = (1 - cn)
         np.fill_diagonal(distX, 1 + eps)  # To make the diagonal elements largest in their row
-        idx, idx11, idx12, idx21, idx22 = sort_idx(distX, k, Args.intra_r)
+        idx = sort_idx2(distX)
         idx_list.append(idx)
 
         # Find the number of modes that we will collapse
@@ -41,7 +41,10 @@ def initialize_connectomes(connectome_list):
         n_mode_list.append(nm)
         A = np.zeros((num, num))
 
-        rr11, rr12, rr21, rr22 = get_gamma_splitted(distX, k, Args.intra_r)
+        # Find how many inter and intra hemispheric connection to keep
+        K1 = get_split_stat(cn, k)
+
+        rr11, rr12, rr21, rr22 = get_gamma_splitted(distX, K1)
         r1 = np.mean(rr11)
         r2 = np.mean(rr12)
         r3 = np.mean(rr21)
@@ -51,7 +54,7 @@ def initialize_connectomes(connectome_list):
         #rt.append((r, r, r, r))
         for i in range(0, num):
             if i < num / 2:
-                A[i, idx11[i, 0:k1]] = 2 * (distX[i, idx11[i, k1]] - distX[i, idx11[i, 0:k1]])
+                A[i, idx[i, 0:k1]] = 2 * (distX[i, idx11[i, k1]] - distX[i, idx11[i, 0:k1]])
                 A[i, idx12[i, 0:k - k1]] = 2 * (distX[i, idx12[i, k - k1]] - distX[i, idx12[i, 0:k - k1]])
             else:
                 A[i, idx21[i - num // 2, 0:k - k1]] = 2 * (
