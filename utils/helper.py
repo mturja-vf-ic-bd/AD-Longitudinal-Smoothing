@@ -1,16 +1,34 @@
-import os
 from numpy import linalg as LA
-from utils.L2_distance import *
-import copy
-from args import Args
-import json
-import matplotlib.pyplot as plt
-import warnings
-from utils.readFile import *
-from utils.helper import *
 from matplotlib import pyplot as plt
 from args import Args
 import json
+import numpy as np
+import copy
+import os
+from bct import *
+#from utils.readFile import readMatricesFromDirectory
+
+
+def get_size(obj, seen=None):
+    """Recursively finds size of objects"""
+    size = sys.getsizeof(obj)
+    if seen is None:
+        seen = set()
+    obj_id = id(obj)
+    if obj_id in seen:
+        return 0
+    # Important mark as seen *before* entering recursion to gracefully handle
+    # self-referential objects
+    seen.add(obj_id)
+    if isinstance(obj, dict):
+        size += sum([get_size(v, seen) for v in obj.values()])
+        size += sum([get_size(k, seen) for k in obj.keys()])
+    elif hasattr(obj, '__dict__'):
+        size += get_size(obj.__dict__, seen)
+    elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+        size += sum([get_size(i, seen) for i in obj])
+    return size
+
 
 def group_elements_of_matrices(input_mat_list):
     mat_list = []
@@ -67,24 +85,46 @@ def get_eigen(L, p):
     return eigenValues[1:count + 2], eigenVectors[:, 1:count + 2], count
 
 
+def get_gamma2(d, k):
+    d_new = copy.deepcopy(d)
+    d_new.sort(axis=1)
+    gamma = []
+    for i in range(0, len(d_new)):
+        gamma.append(0.5 * (k[i] * d_new[i, k[i]] - d_new[i, 0:k[i]].sum()))
+
+    return np.array(gamma)
+
 def get_gamma(d, k):
     d_new = copy.deepcopy(d)
     d_new.sort(axis=1)
     return np.array(0.5 * (k * d_new[:, k + 1] - d_new[:, 1:k + 1].sum(axis=1)))
 
-def get_gamma_splitted(d, K1):
+def get_gamma_splitted(d, K1, K2, mean=False):
     row, col = d.shape
-    rr11 = get_gamma(d[0:row//2, 0:col//2], K1[0:row//2])
-    rr12 = get_gamma(d[0:row//2, col//2:], 1 - K1[0:row//2])
-    rr21 = get_gamma(d[row//2:, 0:col//2], K1[row//2:])
-    rr22 = get_gamma(d[row//2:, col//2:], 1 - K1[row//2:])
+    rr11 = get_gamma2(d[0:row//2, 0:col//2], K1[0:row//2])
+    rr12 = get_gamma2(d[0:row//2, col//2:], K2[0:row//2])
+    rr21 = get_gamma2(d[row//2:, 0:col//2], K1[row//2:])
+    rr22 = get_gamma2(d[row//2:, col//2:], K2[row//2:])
+
+    if mean:
+        return np.mean(rr11), np.mean(rr12), np.mean(rr21), np.mean(rr22)
 
     return rr11, rr12, rr21, rr22
 
 
+def get_scan_count(subject):
+    path = get_data_folder(subject)
+    return len(os.listdir(path)) - 1
+
+
+def get_subject_names():
+    dir = os.path.join(os.path.join(Args.root_directory, os.pardir), 'AD-Data_Organized')
+    sub_names = os.listdir(dir)
+    return [s for s in sub_names if 'smoothed' not in s]
+
 
 def get_data_folder(subject):
-    return os.path.join(os.path.join(os.path.join(args.root_directory, os.pardir), 'AD-Data_Organized'), subject)
+    return os.path.join(os.path.join(os.path.join(Args.root_directory, os.pardir), 'AD-Data_Organized'), subject)
 
 
 def get_coordinates(subject):
@@ -102,7 +142,7 @@ def row_normalize(A):
     A = A / row_sum[:, np.newaxis]
     return A
 
-def sort_idx2(distX, k, r):
+def sort_idx2(distX):
     dim = distX.shape[0]
     idx_11 = np.argsort(distX[0:dim//2, 0:dim//2], axis=1)
     idx_12 = np.argsort(distX[0:dim//2, dim//2:], axis=1) + dim//2
@@ -123,22 +163,33 @@ def sort_idx(distX, k, r):
 
 
 def rescale_matrix(a, factor):
-    print(factor.shape, a.shape)
-    return a * factor
+    '''
+    Multiplies each row of matrix 'a' with values in the vector 'factor'
+    :param a: n * n matrix
+    :param factor: (n, ) vector
+    :return: a multiplied by each values in vector 'factor'
+    '''
 
-def get_entropy(matrix):
+    return a * factor[:, np.newaxis]
+
+
+def get_entropy_matrix(matrix):
     hist, bins = np.histogram(matrix, density=True)
     hist /= hist.sum()
     return -1 * np.dot(hist, np.ma.log(hist))
 
 
+def get_entropy_list(in_list):
+    in_list = np.array(in_list)
+    in_list /= in_list.sum()
+    return -1 * np.dot(in_list.T, np.ma.log(in_list))
+
+
 def get_histogram(matrix, bins=[]):
     matrix = np.log(np.array(matrix) + 1)
-
     if len(bins) == 0:
         bins = 30
     hist, bins = np.histogram(matrix, bins=bins, density=False)
-    #hist, bins = np.histogram(matrix)
     return hist, bins
 
 
@@ -160,6 +211,45 @@ def get_top_links(connectome, count=1, offset=0):
     idx_col = idx % col
     idx_coord = list(zip(idx_row, idx_col))
     return idx_coord[offset:count + offset]
+
+
+def get_centrality_measure(M):
+    bc = betweenness_wei(M)
+    bc /= bc.sum()
+    return np.dot(bc, M.sum(axis=1))
+
+def groupElementsOfMatrices(input_mat_list):
+    mat_list = []
+    i = 1
+    for mat in input_mat_list:
+        mat_list.append(np.asarray(mat).flatten().tolist())
+        i = i + 1
+
+    element_list = []
+    for j in range(0, len(mat_list[0])):
+        el = []
+        for i in range(0, len(mat_list)):
+            el.append(mat_list[i][j])
+        element_list.append(el)
+
+    return element_list
+
+
+def findMeanAndStd(mat_list):
+    dim = len(mat_list[0])
+    element_list = groupElementsOfMatrices(mat_list)
+    stddev = [np.std(element_list[i]) for i in range(0, dim*dim)]
+    meanind = [np.average(element_list[i]) for i in range(0, dim*dim)]
+
+    return np.array(meanind).reshape(dim, dim), np.array(stddev).reshape(dim, dim)
+
+def find_distance_between_matrices(mat_list):
+    d = []
+    for i in range(0, len(mat_list)):
+        for j in range(i, len(mat_list)):
+            d.append(((mat_list[i] - mat_list[j])**2).sum())
+
+    return d
 
 
 if __name__ == '__main__':

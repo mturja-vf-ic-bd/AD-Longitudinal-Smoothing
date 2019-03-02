@@ -33,7 +33,7 @@ def EProjSimplex(v, k = 1):
     else:
         x = v0
 
-    return x, ft
+    return x, ft, sum((x - v) ** 2)
 
 def softmax(X):
     ex = np.exp(X)

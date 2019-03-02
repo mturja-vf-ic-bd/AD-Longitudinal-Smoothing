@@ -4,6 +4,10 @@ from bct import community_louvain
 from matplotlib import pyplot as plt
 import operator
 
+def n_comp(M):
+    c_i, q = community_louvain(np.asarray(M), gamma=1)
+    return len(set(c_i))
+
 
 def get_number_of_components(connectomes):
     n_component = []

@@ -8,9 +8,58 @@ from statistics import median
 
 def get_split_stat(M, k):
     num = len(M)
-    sum_split = M[:, 0:num // 2].sum(axis=1) / (M.sum(axis=1) + 1e-10)
-    K1 = int(round(sum_split * k))
-    return K1
+    sum_split = M[:, 0:num // 2].sum(axis=1) * k / (M.sum(axis=1) + 1e-10)
+    K1 = np.clip(np.around(sum_split).astype(int), 2, num//2 - 2) + 1
+    K2 = np.clip(k - K1, 2, num//2 - 3) + 2
+    return K1, K2
+
+
+def process_connectome(cn):
+    """
+    Finds a sparse representation of cn and get some important parameters for optimization
+    :param cn: The input matrix for the connectome
+    :return:
+    sparse_cn: sparse matrix
+    rt = regularization parameters required for optimizaiton
+    nm = number of modes to optimize
+    idx = sorted index of distX=(1-cn)
+    K1 = number of non-zero elements in the left half of cn
+    K2 = number of non-zero elements in the right half of cn
+    """
+
+    c_dim = cn.shape
+    k = Args.k
+
+    eps = 1e-10
+    num = c_dim[0]
+
+    distX = (1 - cn)
+    np.fill_diagonal(distX, 1 + eps)  # To make the diagonal elements largest in their row
+    idx = sort_idx2(distX)
+
+    # Find the number of modes that we will collapse
+    cn_s = (cn + cn.T) / 2
+    D_cn = np.diag(cn_s.sum(axis=1))
+    L_cn = np.subtract(D_cn, cn_s)
+    _, _, nm = get_eigen(L_cn, Args.n_eig)
+
+    # Find how many inter and intra hemispheric connection to keep
+    K1, K2 = get_split_stat(cn, k)
+    r1, r2, r3, r4 = get_gamma_splitted(distX, K1, K2, mean=True)
+    rt = (r1, r2, r3, r4)
+
+    # Get a sparse representation of cn
+    A = np.zeros((num, num))
+    for i in range(0, num):
+        k1 = K1[i]
+        k2 = K2[i]
+        A[i, idx[i, 0:k1]] = 2 * (distX[i, idx[i, k1]] - distX[i, idx[i, 0:k1]])
+        A[i, idx[i, num // 2:num // 2 + k2]] = 2 * (distX[i, idx[i, num // 2 + k2]] -
+                                                    distX[i, idx[i, num // 2: num // 2 + k2]])
+
+    sparse_cn = row_normalize(A)
+
+    return sparse_cn, rt, nm, idx, K1, K2
 
 
 def initialize_connectomes(connectome_list):
@@ -24,7 +73,6 @@ def initialize_connectomes(connectome_list):
 
     num = c_dim[0]
     idx_list = []
-    k1 = int(round(Args.intra_r * k))
     n_mode_list = []
 
     for cn in connectome_list:
@@ -42,9 +90,9 @@ def initialize_connectomes(connectome_list):
         A = np.zeros((num, num))
 
         # Find how many inter and intra hemispheric connection to keep
-        K1 = get_split_stat(cn, k)
+        K1, K2 = get_split_stat(cn, k)
 
-        rr11, rr12, rr21, rr22 = get_gamma_splitted(distX, K1)
+        rr11, rr12, rr21, rr22 = get_gamma_splitted(distX, K1, K2)
         r1 = np.mean(rr11)
         r2 = np.mean(rr12)
         r3 = np.mean(rr21)
@@ -53,37 +101,30 @@ def initialize_connectomes(connectome_list):
         #r = np.mean(get_gamma(distX, k))
         #rt.append((r, r, r, r))
         for i in range(0, num):
-            if i < num / 2:
-                A[i, idx[i, 0:k1]] = 2 * (distX[i, idx11[i, k1]] - distX[i, idx11[i, 0:k1]])
-                A[i, idx12[i, 0:k - k1]] = 2 * (distX[i, idx12[i, k - k1]] - distX[i, idx12[i, 0:k - k1]])
-            else:
-                A[i, idx21[i - num // 2, 0:k - k1]] = 2 * (
-                        distX[i, idx21[i - num // 2, k - k1]] - distX[i, idx21[i - num // 2, 0:k - k1]])
-                A[i, idx22[i - num // 2, 0:k1]] = 2 * (
-                        distX[i, idx22[i - num // 2, k1]] - distX[i, idx22[i - num // 2, 0:k1]])
+            k1 = K1[i]
+            k2 = K2[i]
+            A[i, idx[i, 0:k1]] = 2 * (distX[i, idx[i, k1]] - distX[i, idx[i, 0:k1]])
+            A[i, idx[i, num//2:num//2 + k2]] = 2 * (distX[i, idx[i, num//2 + k2]] -
+                                                        distX[i, idx[i, num//2: num//2 + k2]])
 
         smoothed_connectomes.append(row_normalize(A))
 
-    return smoothed_connectomes, rt, n_mode_list, idx_list
+    return smoothed_connectomes, rt, n_mode_list, idx_list, K1, K2
 
 
 def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, lmd, r=-1):
     c_dim = connectome_list[0].shape
     rbf_fit = RBF(Args.rbf_sigma, Args.lambda_m, Args.debug)
     wt_local = [np.ones(Args.c_dim) for i in range(0, len(connectome_list))]
-    k = Args.k
     eps = 1e-10
     num = c_dim[0]
 
-    smoothed_connectomes, rt, n_mode_list, idx_list = initialize_connectomes(connectome_list)
-
+    smoothed_connectomes, rt, n_mode_list, idx_list, K1, K2 = initialize_connectomes(connectome_list)
     n_modes = int(median(n_mode_list))
-    print(n_modes)
-    smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
+    #smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
 
     F = None
     # Iteration
-    loss = 0
     for i in range(0, Args.n_iter):
         if Args.debug:
             print("Iteration: ", i)
@@ -97,11 +138,11 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, lmd, r=-1):
         dF = L2_distance(np.transpose(F), np.transpose(F))
 
         sum_split = M[:, 0:num // 2].sum(axis=1) / (M.sum(axis=1) + eps)
+        loss = 0
 
         for t in range(0, len(smoothed_connectomes)):
             idx = idx_list[t]
             r1, r2, r3, r4 = rt[t]
-            print(rt[t])
             dX = (1 - connectome_list[t])
             dS = (1 - smoothed_connectomes[t])
             dI = (dfw * dX + sw * dS
@@ -109,72 +150,61 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, lmd, r=-1):
 
             S_new = np.zeros(Args.c_dim)
             for j in range(0, num):
-                print("j, sum: ", j, sum_split[j])
-                # S_new[j, idx[j, 0:k]], _ = EProjSimplex.EProjSimplex(-dI[j, idx[j, 0:k]] / (2*rt[t]))
+                k1 = K1[j]
+                k2 = K2[j]
 
                 if j < num / 2:
-                    k1 = int(round(sum_split[j] * k))
                     dI11 = -dI[j, idx[j, 0:k1]] / (2 * r1)
-                    dI12 = -dI[j, idx[j, k1 + 1:k]] / (2 * r2)
-                    S_new[j, idx[j, 0:k1]], _ = EProjSimplex.EProjSimplex(dI11,
+                    dI12 = -dI[j, idx[j, num//2:num//2 + k2]] / (2 * r2)
+                    S_new[j, idx[j, 0:k1]], _, l1 = EProjSimplex.EProjSimplex(dI11,
                                                                           sum_split[j])
-                    S_new[j, idx[j, k1 + 1:k]], _ = EProjSimplex.EProjSimplex(dI12,
+                    S_new[j, idx[j, num//2:num//2 + k2]], _, l2 = EProjSimplex.EProjSimplex(dI12,
                                                                               1 - sum_split[j])
+                    loss = loss + l1 + l2
                 else:
-                    k1 = int(round((1-sum_split[j]) * k))
-                    dI21 = -dI[j, idx[j, 0:k - k1]] / (2 * r3)
-                    dI22 = -dI[j, idx[j, k - k1 + 1:k]] / (2 * r4)
-                    S_new[j, idx[j, 0:k - k1]], _ = EProjSimplex.EProjSimplex(dI21,
-                                                                              sum_split[j])
-                    S_new[j, idx[j, k - k1 + 1:k]], _ = EProjSimplex.EProjSimplex(dI22,
+                    dI21 = -dI[j, idx[j, 0:k1]] / (2 * r3)
+                    dI22 = -dI[j, idx[j, num//2: num//2 + k2]] / (2 * r4)
+                    S_new[j, idx[j, 0:k1]], _, l3 = EProjSimplex.EProjSimplex(dI21, sum_split[j])
+                    S_new[j, idx[j, num//2: num//2 + k2]], _, l4 = EProjSimplex.EProjSimplex(dI22,
                                                                                   1 - sum_split[j])
+                    loss = loss + l3 + l4
 
             smoothed_connectomes[t] = S_new
             wt_local[t] = np.exp(-((smoothed_connectomes[t] - row_normalize(M)) ** 2) / (Args.rbf_sigma ** 2))
-            loss = (S_new + dI).sum()
 
         smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
 
         if Args.debug:
             print("lamda: ", lmd)
+            print("Loss: ", loss)
 
-        print("Loss: ", loss)
+    #for t in range(0, len(smoothed_connectomes)):
+    #    smoothed_connectomes[t] = row_normalize(smoothed_connectomes[t])
 
-    for t in range(0, len(smoothed_connectomes)):
-        smoothed_connectomes[t] = row_normalize(smoothed_connectomes[t])
-
-    # loss=1
-    # M = None
     return smoothed_connectomes, M, loss
 
 
 if __name__ == "__main__":
     # Read data
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
-    sub = '027_S_2336'
-    connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
-    Args = Args()
-    smoothed_connectomes, M, E = optimize_longitudinal_connectomes(connectome_list, Args.dfw, Args.sw, Args.lmw,
-                                                                   Args.lmd)
-    output_dir = os.path.join(data_dir, sub + '_smoothed')
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    #sub_names = get_subject_names()
+    sub_names = ["027_S_2336"]
+    for sub in sub_names:
+        scan_count = get_scan_count(sub)
+        if scan_count > 1:
+            print("---------------\n\nRunning ", sub, " with scan count : ", scan_count)
+            connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
+            smoothed_connectomes, M, E = optimize_longitudinal_connectomes(connectome_list, Args.dfw, Args.sw, Args.lmw,
+                                                                           Args.lmd)
+            output_dir = os.path.join(data_dir, sub + '_smoothed')
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
 
-    for t in range(0, len(smoothed_connectomes)):
-        with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
-            np.savetxt(out, smoothed_connectomes[t])
+            for t in range(0, len(smoothed_connectomes)):
+                with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
+                    np.savetxt(out, smoothed_connectomes[t])
 
-    # with open(os.path.join(output_dir, sub + "_smoothed_u"), 'w') as out:
-    #   np.savetxt(out, M)
-
-    n_comp_, label_list = get_number_of_components(connectome_list)
-    print("\nNumber of component: ", n_comp_)
-    n_comp_, label_list = get_number_of_components(smoothed_connectomes)
-    print("\nNumber of component: ", n_comp_)
-    # create_brain_net_node_files(sub, label_list)
-    # create_brain_net_node_files(sub + "_smoothed", label_list)
-
-    connectome_list.append(find_mean(connectome_list))
-    smoothed_connectomes.append(M)
-
-    # test_result(sub, connectome_list, smoothed_connectomes)
+            n_comp_, label_list = get_number_of_components(connectome_list)
+            print("\nNumber of component: ", n_comp_)
+            #n_comp_, label_list = get_number_of_components(smoothed_connectomes)
+            #print("\nNumber of component: ", n_comp_)
