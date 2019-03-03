@@ -119,9 +119,9 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, lmd, r=-1):
     eps = 1e-10
     num = c_dim[0]
 
-    smoothed_connectomes, rt, n_mode_list, idx_list, K1, K2 = initialize_connectomes(connectome_list)
-    n_modes = int(median(n_mode_list))
-    #smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
+    #smoothed_connectomes, rt, n_mode_list, idx_list, K1, K2 = initialize_connectomes(connectome_list)
+    #n_modes = int(median(n_mode_list))
+    smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(connectome_list)
 
     F = None
     # Iteration
@@ -130,19 +130,19 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, lmd, r=-1):
             print("Iteration: ", i)
 
         M = find_mean(smoothed_connectomes, wt_local)  # link-wise mean of the connectomes
-        M_s = 0.5 * np.add(M, M.T)
+        M_sparse, rt, n_modes, idx, K1, K2 = process_connectome(M)
+        M_s = 0.5 * np.add(M_sparse, M_sparse.T)
         D = np.diag(M_s.sum(axis=1))
         L = np.subtract(D, M_s)
-        dM = (1 - M)
+        dM = (1 - M_sparse)
         eig_val, F, _ = get_eigen(L, n_modes)
         dF = L2_distance(np.transpose(F), np.transpose(F))
 
-        sum_split = M[:, 0:num // 2].sum(axis=1) / (M.sum(axis=1) + eps)
+        sum_split = M_sparse[:, 0:num // 2].sum(axis=1) / (M_sparse.sum(axis=1) + eps)
         loss = 0
 
+        r1, r2, r3, r4 = rt
         for t in range(0, len(smoothed_connectomes)):
-            idx = idx_list[t]
-            r1, r2, r3, r4 = rt[t]
             dX = (1 - connectome_list[t])
             dS = (1 - smoothed_connectomes[t])
             dI = (dfw * dX + sw * dS
@@ -170,7 +170,7 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, lmd, r=-1):
                     loss = loss + l3 + l4
 
             smoothed_connectomes[t] = S_new
-            wt_local[t] = np.exp(-((smoothed_connectomes[t] - row_normalize(M)) ** 2) / (Args.rbf_sigma ** 2))
+            wt_local[t] = np.exp(-((smoothed_connectomes[t] - row_normalize(M_sparse)) ** 2) / (Args.pro ** 2))
 
         smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
 
@@ -178,22 +178,23 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, lmd, r=-1):
             print("lamda: ", lmd)
             print("Loss: ", loss)
 
-    #for t in range(0, len(smoothed_connectomes)):
-    #    smoothed_connectomes[t] = row_normalize(smoothed_connectomes[t])
+    for t in range(0, len(smoothed_connectomes)):
+        smoothed_connectomes[t] = row_normalize(smoothed_connectomes[t])
 
-    return smoothed_connectomes, M, loss
+    return smoothed_connectomes, M_sparse, loss
 
 
 if __name__ == "__main__":
     # Read data
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
     #sub_names = get_subject_names()
-    sub_names = ["027_S_2336"]
+    sub_names = ["027_S_5110"]
     for sub in sub_names:
         scan_count = get_scan_count(sub)
         if scan_count > 1:
             print("---------------\n\nRunning ", sub, " with scan count : ", scan_count)
             connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
+            connectome_list = add_noise_all(connectome_list)
             smoothed_connectomes, M, E = optimize_longitudinal_connectomes(connectome_list, Args.dfw, Args.sw, Args.lmw,
                                                                            Args.lmd)
             output_dir = os.path.join(data_dir, sub + '_smoothed')
@@ -204,7 +205,7 @@ if __name__ == "__main__":
                 with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
                     np.savetxt(out, smoothed_connectomes[t])
 
-            n_comp_, label_list = get_number_of_components(connectome_list)
-            print("\nNumber of component: ", n_comp_)
+            #n_comp_, label_list = get_number_of_components(connectome_list)
+            #print("\nNumber of component: ", n_comp_)
             #n_comp_, label_list = get_number_of_components(smoothed_connectomes)
             #print("\nNumber of component: ", n_comp_)

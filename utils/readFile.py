@@ -81,9 +81,9 @@ def readSubjectFiles(subject):
 def normalize_matrix(mat, method="row"):
     if method == "row":
         row_sums = mat.sum(axis=1)
-        mat /= row_sums[:, np.newaxis]
+        mat /= (row_sums[:, np.newaxis] + Args.eps)
     else:
-        mat /= mat.sum()
+        mat /= (mat.sum() + Args.eps)
 
     return mat
 

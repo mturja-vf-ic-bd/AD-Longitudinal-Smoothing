@@ -251,6 +251,26 @@ def find_distance_between_matrices(mat_list):
 
     return d
 
+def add_noise(connectome):
+    """
+    adds gaussian noise to connectome
+    :param connectome:
+    :return:
+    """
+
+    shape = connectome.shape
+    var = np.median(connectome, axis=None) * 100
+    print("var", var)
+    noise = np.random.normal(0, var, shape)
+    return connectome + noise
+
+def add_noise_all(connectome_list):
+    connectome_list_noisy = []
+    for t in range(len(connectome_list)):
+        connectome_list_noisy.append(add_noise(connectome_list[t]))
+
+    return connectome_list_noisy
+
 
 if __name__ == '__main__':
     args = Args()
@@ -260,9 +280,9 @@ if __name__ == '__main__':
     T = len(connectome_list)
     for t in range(0, T):
         idx = get_top_links(connectome_list[t], count=20)
-        print("\nt = ", t)
-        for a, b in idx:
-            print("A(", a, b, ") = ", connectome_list[t][a, b])
+        #print("\nt = ", t)
+        #for a, b in idx:
+        #    print("A(", a, b, ") = ", connectome_list[t][a, b])
     '''
     f = connectome_list[0].sum(axis=1)[:, np.newaxis]
     total = connectome_list[0].sum()

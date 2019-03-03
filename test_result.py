@@ -10,8 +10,9 @@ def test_result(sub, connectome_list, smoothed_connectomes, max_ind):
     file_parcellation_table = os.path.join(
         os.path.join(os.path.join(data_dir, sub), 'helper_files/parcellationTable.json'))
 
+
     vmin = 0
-    vmax = 0.1
+    vmax = 0.0001
     for t in range(0, len(connectome_list)):
         fig = plt.figure()
         plt.subplot(1, 2, 1)
@@ -83,16 +84,20 @@ def test_result(sub, connectome_list, smoothed_connectomes, max_ind):
         plt.plot(A, color='red')
         plt.plot(S, color='blue')
         count = count + 1
-    '''
+'''
 
     plt.show()
 
 
 if __name__ == '__main__':
-    sub = '027_S_2336'
+    sub = '027_S_5110'
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
-    connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub), False)
-    max_ind = get_top_links(connectome_list[0], count=5, offset=2000)
-    connectome_list = [normalize_matrix(connectome_list[t]) for t in range(0, len(connectome_list))]
-    smoothed_connectome = readMatricesFromDirectory(os.path.join(data_dir, sub + '_smoothed'), False)
+    connectome_list, smoothed_connectome = readSubjectFiles(sub)
+    connectome_list_noisy = add_noise_all(connectome_list)
+    max_ind = get_top_links(connectome_list[0], count=3, offset=0)
+
+    #for t in range(len(connectome_list)):
+    #    print((connectome_list[t] > 0.001).sum())
+    #    print((smoothed_connectome[t] > 0.001).sum())
+
     test_result(sub, connectome_list, smoothed_connectome, max_ind)

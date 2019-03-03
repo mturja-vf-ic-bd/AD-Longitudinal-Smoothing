@@ -4,6 +4,7 @@ from utils.readFile import get_subject_info, readSubjectFiles
 from sklearn.model_selection import train_test_split
 from args import Args
 from scipy.cluster.vq import vq, kmeans, whiten
+from utils.helper import *
 
 
 def read_data():
@@ -20,7 +21,7 @@ def read_data():
 
     return X1, X2, y
 
-def extract_features(g, method='pca'):
+def extract_features(g, method='None'):
     """
     Extract features from each node of graph g.
     :param g: adjacency matrix of g
@@ -37,13 +38,15 @@ def extract_features(g, method='pca'):
         return bc
     elif method == 'pca':
         eig, _ = np.linalg.eigh(g)
-        return eig[len(eig)-4: len(eig)]
+        return eig
+    elif method == 'None':
+        return g.flatten()
 
 
 if __name__ == '__main__':
     X_rw, X_sm, y = read_data()
+    print(len(X_rw))
 
-    '''
     X_rw_train, X_rw_test, y_train, y_test = train_test_split(X_rw, y, test_size=0.20, random_state=10)
     clf = svm.SVC(gamma='scale', decision_function_shape='ovr')
     clf.fit(X_rw_train, y_train)
@@ -55,6 +58,8 @@ if __name__ == '__main__':
     clf.fit(np.nan_to_num(X_sm_train), y_train)
     pred = clf.predict(np.nan_to_num(X_sm_test))
     print(sum((pred == y_test)) / len(y_test))
-    '''
 
-    print(kmeans(X_rw, k_or_guess=3))
+    center_rw, _ = kmeans(X_rw, k_or_guess=3)
+    center_sw, _ = kmeans(X_sm, k_or_guess=3)
+    print(center_rw)
+    print(center_sw)
