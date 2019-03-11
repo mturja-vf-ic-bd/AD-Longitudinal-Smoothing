@@ -26,12 +26,13 @@ def grid_search(sub, param_set):
             E_min = E
             ps_min = ps
 
-        print("Loss: ", E,
-              "\nParamSet: ", ps)
+        print("ParamSet: ", ps,
+              "\tLoss: ", E,
+              "\tMin: ", E_min)
     return E_min, ps_min
 
 
 if __name__ == '__main__':
-    param_set = [[0.1, 0.5, 1], [0.1, 0.5, 1], [0.1, 0.5, 1], [0.3, 0.5, 1]]
-    E_min, ps_min = grid_search('027_S_2336', param_set)
+    param_set = [[0.1, 0.3, 0.5, 1], [0], [0.1, 0.3, 0.5, 1], [0.1, 0.3, 0.5, 1]]
+    E_min, ps_min = grid_search('027_S_2219', param_set)
     print(ps_min)

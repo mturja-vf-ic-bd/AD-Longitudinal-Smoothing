@@ -3,26 +3,27 @@ from utils.helper import *
 from matplotlib import pyplot as plt
 from args import Args
 import json
+from test import optimize_longitudinal_connectomes
 
-def test_result(sub, connectome_list, smoothed_connectomes, max_ind):
+def test_result(sub, connectome_list, smoothed_connectomes, max_ind, plot_all=False):
     args = Args()
     data_dir = os.path.join(os.path.join(args.root_directory, os.pardir), 'AD-Data_Organized')
     file_parcellation_table = os.path.join(
         os.path.join(os.path.join(data_dir, sub), 'helper_files/parcellationTable.json'))
 
-
-    vmin = 0
-    vmax = 0.0001
-    for t in range(0, len(connectome_list)):
-        fig = plt.figure()
-        plt.subplot(1, 2, 1)
-        plt.imshow(connectome_list[t], vmin=vmin, vmax=vmax, cmap='bwr')
-        plt.colorbar(orientation='horizontal')
-        plt.subplot(1, 2, 2)
-        plt.imshow(smoothed_connectomes[t], vmin=vmin, vmax=vmax, cmap='bwr')
-        plt.colorbar(orientation='horizontal')
-        plt.show()
-        fig.savefig("matplt" + str(t) + ".pdf", bbox_inches='tight')
+    if plot_all:
+        vmin = 0
+        vmax = 0.25
+        for t in range(0, len(connectome_list)):
+            fig = plt.figure()
+            plt.subplot(1, 2, 1)
+            plt.imshow(connectome_list[t], vmin=vmin, vmax=vmax, cmap='bwr')
+            plt.colorbar(orientation='horizontal')
+            plt.subplot(1, 2, 2)
+            plt.imshow(smoothed_connectomes[t], vmin=vmin, vmax=vmax, cmap='bwr')
+            plt.colorbar(orientation='horizontal')
+            plt.show()
+            fig.savefig("matplt" + str(t) + ".pdf", bbox_inches='tight')
 
 
     # Reading parcellation table to get the coordinates of each region
@@ -38,6 +39,7 @@ def test_result(sub, connectome_list, smoothed_connectomes, max_ind):
     fig = plt.gcf()
     fig.set_size_inches(30, 15)
     fig.savefig('test2png.png', dpi=100)
+
 
     for a, b in max_ind:
         print("a, b = ", a, b)
@@ -58,7 +60,7 @@ def test_result(sub, connectome_list, smoothed_connectomes, max_ind):
                 plt.xlabel(row_sum_percent[a])
                 plt.title(table[a]["name"] + "_" + str(a // 74) + " to \n" + table[b]["name"]
                           + "_" + str(b // 74))
-            #plt.ylim(0, 1)
+            plt.ylim(0, 1)
             plt.plot(A, color='red')
             plt.plot(S, color='blue')
             count = count + 1
@@ -84,7 +86,7 @@ def test_result(sub, connectome_list, smoothed_connectomes, max_ind):
         plt.plot(A, color='red')
         plt.plot(S, color='blue')
         count = count + 1
-'''
+    '''
 
     plt.show()
 
@@ -92,12 +94,18 @@ def test_result(sub, connectome_list, smoothed_connectomes, max_ind):
 if __name__ == '__main__':
     sub = '027_S_5110'
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
-    connectome_list, smoothed_connectome = readSubjectFiles(sub)
-    connectome_list_noisy = add_noise_all(connectome_list)
-    max_ind = get_top_links(connectome_list[0], count=3, offset=0)
+    connectome_list, smoothed_connectome = readSubjectFiles(sub, method="row")
+    max_ind = get_top_links(connectome_list[0], count=5, offset=100)
 
     #for t in range(len(connectome_list)):
     #    print((connectome_list[t] > 0.001).sum())
     #    print((smoothed_connectome[t] > 0.001).sum())
 
-    test_result(sub, connectome_list, smoothed_connectome, max_ind)
+    test_result(sub, connectome_list, smoothed_connectome, max_ind, plot_all=True)
+
+    connectome_list_noisy = add_noise_all(connectome_list)
+    connectome_list_noisy = [row_normalize(connectome_list_noisy[t]) for t in range(0, len(connectome_list_noisy))]
+    smoothed_connectomes_noisy, M, E = optimize_longitudinal_connectomes(connectome_list_noisy, Args.dfw, Args.sw,
+                                                                         Args.lmw,
+                                                                         Args.lmd)
+    test_result(sub, connectome_list_noisy, smoothed_connectomes_noisy, max_ind, plot_all=True)

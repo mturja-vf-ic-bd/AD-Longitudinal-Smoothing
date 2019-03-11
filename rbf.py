@@ -1,4 +1,5 @@
 from compare_network import *
+import numpy as np
 
 
 class RBF:

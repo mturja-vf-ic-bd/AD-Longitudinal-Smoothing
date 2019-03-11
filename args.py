@@ -4,11 +4,11 @@ import numpy as np
 class Args:
     n_eig = 0.005  # percent of eigen values to be zero
     eps=1e-12
-    lmd = 1
-    dfw = 2
-    sw = 1
+    lmd = 0.4
+    dfw = 1
+    sw = 0
     lmw = 1
-    k = 140
+    k = 10
     debug = False
     n_iter = 10
     c_dim = (148, 148)  # matrix dimension

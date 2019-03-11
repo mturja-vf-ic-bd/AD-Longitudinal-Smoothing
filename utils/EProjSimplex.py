@@ -1,4 +1,4 @@
-from utils.create_brain_net_files import *
+import numpy as np
 from matplotlib import pyplot as plt
 
 

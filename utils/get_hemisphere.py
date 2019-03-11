@@ -1,5 +1,6 @@
-from utils.readFile import *
-import os
+#from utils.readFile import readMatricesFromDirectory
+#import numpy as np
+#import os
 
 def get_left_hemisphere(wb):
     n = len(wb)

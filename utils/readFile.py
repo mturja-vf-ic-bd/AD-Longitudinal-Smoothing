@@ -6,7 +6,7 @@ import time
 from args import Args
 
 
-def readMatrixFromTextFile(fname, debug=False):
+def readMatrixFromTextFile(fname, debug=True):
     if debug == True:
         print("Reading File: " + fname)
     a = []
@@ -64,16 +64,17 @@ def read_csv(filename, skiphead=True, project=None):
 
     return table
 
-def readSubjectFiles(subject):
+def readSubjectFiles(subject, method="whole"):
     dir_rw = os.path.join(Args.data_directory, subject)
     dir_smth = os.path.join(Args.data_directory, subject + '_smoothed')
-    rw_data = readMatricesFromDirectory(dir_rw, True, method="whole")
+    rw_data = readMatricesFromDirectory(dir_rw, True, method)
     smth_data = readMatricesFromDirectory(dir_smth, False)
 
-    for t in range(0, len(rw_data)):
-        smth_data[t] = rescale_matrix(smth_data[t], rw_data[t].sum(axis=1))
-        smth_data[t] = (smth_data[t] + smth_data[t].T) / 2
-        rw_data[t] = (rw_data[t] + rw_data[t].T) / 2
+    if method == "whole":
+        for t in range(0, len(rw_data)):
+            smth_data[t] = rescale_matrix(smth_data[t], rw_data[t].sum(axis=1))
+            smth_data[t] = (smth_data[t] + smth_data[t].T) / 2
+            rw_data[t] = (rw_data[t] + rw_data[t].T) / 2
 
     return rw_data, smth_data
 
@@ -110,8 +111,6 @@ if __name__ == '__main__':
     from args import Args
     import collections
     from matplotlib import pyplot as plt
-    import plotly.plotly as py
-    import plotly.tools as tls
 
     args = Args()
     data_dir = os.path.join(os.path.join(args.root_directory, os.pardir) , 'AD-Data_Organized')

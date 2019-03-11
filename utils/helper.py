@@ -1,12 +1,11 @@
 from numpy import linalg as LA
-from matplotlib import pyplot as plt
 from args import Args
 import json
 import numpy as np
 import copy
 import os
 from bct import *
-#from utils.readFile import readMatricesFromDirectory
+#from utils.readFile import *
 
 
 def get_size(obj, seen=None):
@@ -117,10 +116,10 @@ def get_scan_count(subject):
     return len(os.listdir(path)) - 1
 
 
-def get_subject_names():
+def get_subject_names(count=0):
     dir = os.path.join(os.path.join(Args.root_directory, os.pardir), 'AD-Data_Organized')
     sub_names = os.listdir(dir)
-    return [s for s in sub_names if 'smoothed' not in s]
+    return [s for s in sub_names if 'smoothed' not in s and get_scan_count(s) > count]
 
 
 def get_data_folder(subject):
@@ -251,18 +250,25 @@ def find_distance_between_matrices(mat_list):
 
     return d
 
-def add_noise(connectome):
+
+def add_noise(connectome, type='gaussian'):
     """
     adds gaussian noise to connectome
     :param connectome:
     :return:
     """
-
     shape = connectome.shape
-    var = np.median(connectome, axis=None) * 100
-    print("var", var)
-    noise = np.random.normal(0, var, shape)
-    return connectome + noise
+    noise = np.zeros(shape)
+    for row in range(shape[0]):
+        for col in range(shape[1]):
+            if type == 'gamma':
+                noise[row][col] = np.random.gamma(connectome[row][col], 0.1 * connectome[row][col])
+            else:
+                noise[row][col] = np.random.normal(connectome[row][col], connectome[row][col])
+                np.clip(noise, 0, 1)
+
+    return noise
+
 
 def add_noise_all(connectome_list):
     connectome_list_noisy = []
@@ -272,63 +278,26 @@ def add_noise_all(connectome_list):
     return connectome_list_noisy
 
 
+def connectome_median(connectome_list):
+    assert len(connectome_list) > 0, "Empty connectome list"
+    shape = connectome_list[0].shape
+    element_list = groupElementsOfMatrices(connectome_list)
+    return np.median(element_list, axis=1).reshape(shape)
+
+
 if __name__ == '__main__':
-    args = Args()
-    data_dir = os.path.join(os.path.join(args.root_directory, os.pardir), 'AD-Data_Organized')
-    sub = '027_S_2336'
-    connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub), False)
-    T = len(connectome_list)
-    for t in range(0, T):
-        idx = get_top_links(connectome_list[t], count=20)
-        #print("\nt = ", t)
-        #for a, b in idx:
-        #    print("A(", a, b, ") = ", connectome_list[t][a, b])
-    '''
-    f = connectome_list[0].sum(axis=1)[:, np.newaxis]
-    total = connectome_list[0].sum()
-    print(total)
-    threshold = 1e-5
-    se = []
-    re = []
-    smoothed_connectome = readMatricesFromDirectory(os.path.join(data_dir, sub + '_smoothed'), False)
-    for t in range(0, len(smoothed_connectome)):
-        smoothed_connectome[t] = rescale_matrix(smoothed_connectome[t], f)/total
-        connectome_list[t] = connectome_list[t]/total
-        connectome_list[t] = (connectome_list[t] > threshold) * connectome_list[t]
-        smoothed_connectome[t] = (smoothed_connectome[t] > threshold) * connectome_list[t]
-        se.append(get_entropy(smoothed_connectome[t]))
-        re.append(get_entropy(connectome_list[t]))
+    A = np.ones((3, 3))
+    B = 2 * np.ones((3, 3))
+    C = 4 * np.ones((3, 3))
+    D = [A, B, C]
 
-    print(se,
-          '\n',
-          re)
-    plt.plot(se, color='b')
-    plt.plot(re, color='r')
-    #plt.ylim(0, 0.3)
-
-    
-    hist1 = get_histogram_list(connectome_list)
-    bins1 = [hist1[t][1] for t in range(0, len(connectome_list))]
-    hist2 = get_histogram_list(smoothed_connectome, bins=bins1)
-    n = len(hist1)
-    row = (n + 1) // 2
-    col = 2
-
-    for t in range(0, n - 1):
-        h1, b1 = hist1[t]
-        h2, b2 = hist2[t]
-        b1 = b1[1:]
-        plt.subplot(row, col, t + 1)
-        plt.plot(b1[1:], h1[1:], color='r')
-        plt.plot(b2[1:-1], h2[1:], color='b')
-        print(b1[0:2],
-              b2[0:2])
-        #plt.bar(b[1:], h[1:], width=b[2] - b[1])
-        #plt.yscale("log", nonposy="clip")
-        plt.ylim(0, 150)
-    '''
+    sub = '027_S_2219'
+    data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
+    connectome_list, smoothed_connectome = readSubjectFiles(sub, method="row")
+    M_c = connectome_median(D)
+    print(M_c)
 
 
 
-    plt.show()
+
 

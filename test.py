@@ -1,10 +1,14 @@
 from rbf import *
 from utils.create_brain_net_files import *
-from utils.helper import *
 from utils.L2_distance import *
 from utils import EProjSimplex, get_hemisphere
 from args import Args
-from statistics import median
+import os
+
+from utils.helper import row_normalize, get_gamma_splitted, get_eigen, sort_idx2, get_subject_names, get_scan_count, \
+    find_mean, add_noise_all, connectome_median
+from utils.readFile import readMatricesFromDirectory
+
 
 def get_split_stat(M, k):
     num = len(M)
@@ -98,8 +102,8 @@ def initialize_connectomes(connectome_list):
         r3 = np.mean(rr21)
         r4 = np.mean(rr22)
         rt.append((r1, r2, r3, r4))
-        #r = np.mean(get_gamma(distX, k))
-        #rt.append((r, r, r, r))
+        # r = np.mean(get_gamma(distX, k))
+        # rt.append((r, r, r, r))
         for i in range(0, num):
             k1 = K1[i]
             k2 = K2[i]
@@ -122,23 +126,27 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, lmd, r=-1):
     #smoothed_connectomes, rt, n_mode_list, idx_list, K1, K2 = initialize_connectomes(connectome_list)
     #n_modes = int(median(n_mode_list))
     smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(connectome_list)
+    prev_smoothed_connectomes = [None] * len(smoothed_connectomes)
 
-    F = None
+    M = connectome_median(connectome_list)
+    loss = 0
     # Iteration
     for i in range(0, Args.n_iter):
         if Args.debug:
             print("Iteration: ", i)
 
-        M = find_mean(smoothed_connectomes, wt_local)  # link-wise mean of the connectomes
         M_sparse, rt, n_modes, idx, K1, K2 = process_connectome(M)
         M_s = 0.5 * np.add(M_sparse, M_sparse.T)
         D = np.diag(M_s.sum(axis=1))
         L = np.subtract(D, M_s)
         dM = (1 - M_sparse)
         eig_val, F, _ = get_eigen(L, n_modes)
+        #F /= F.sum(axis=0)
         dF = L2_distance(np.transpose(F), np.transpose(F))
+        dF = (dF > 0) * dF
 
         sum_split = M_sparse[:, 0:num // 2].sum(axis=1) / (M_sparse.sum(axis=1) + eps)
+        prev_loss = loss
         loss = 0
 
         r1, r2, r3, r4 = rt
@@ -146,7 +154,7 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, lmd, r=-1):
             dX = (1 - connectome_list[t])
             dS = (1 - smoothed_connectomes[t])
             dI = (dfw * dX + sw * dS
-                  + lmw * dM + lmd * dF) / (dfw + sw + lmw + lmd)
+                  + lmw * (dM + lmd * dF) / (1 + lmd)) / (dfw + sw + lmw)
 
             S_new = np.zeros(Args.c_dim)
             for j in range(0, num):
@@ -169,15 +177,23 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, lmd, r=-1):
                                                                                   1 - sum_split[j])
                     loss = loss + l3 + l4
 
+            prev_smoothed_connectomes[t] = smoothed_connectomes[t]
             smoothed_connectomes[t] = S_new
             wt_local[t] = np.exp(-((smoothed_connectomes[t] - row_normalize(M_sparse)) ** 2) / (Args.pro ** 2))
 
-        smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
+        M = find_mean(smoothed_connectomes, wt_local)  # link-wise mean of the connectomes
+
+        #smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
 
         if Args.debug:
             print("lamda: ", lmd)
-            print("Loss: ", loss)
+        print("Loss: ", loss)
+        if prev_loss < loss and prev_loss != 0:
+            loss = prev_loss
+            smoothed_connectomes = prev_smoothed_connectomes
+            break
 
+    smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
     for t in range(0, len(smoothed_connectomes)):
         smoothed_connectomes[t] = row_normalize(smoothed_connectomes[t])
 
@@ -187,16 +203,35 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, lmd, r=-1):
 if __name__ == "__main__":
     # Read data
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
-    #sub_names = get_subject_names()
-    sub_names = ["027_S_5110"]
+    sub_names = get_subject_names(5)
+    #sub_names = ["027_S_2219"]
+    nr = []
+    ns = []
     for sub in sub_names:
         scan_count = get_scan_count(sub)
         if scan_count > 1:
             print("---------------\n\nRunning ", sub, " with scan count : ", scan_count)
             connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
-            connectome_list = add_noise_all(connectome_list)
             smoothed_connectomes, M, E = optimize_longitudinal_connectomes(connectome_list, Args.dfw, Args.sw, Args.lmw,
                                                                            Args.lmd)
+
+            connectome_list_noisy = add_noise_all(connectome_list)
+            smoothed_connectomes_noisy, M, E = optimize_longitudinal_connectomes(connectome_list_noisy, Args.dfw, Args.sw, Args.lmw,
+                                                                   Args.lmd)
+            # Compute noise in raw
+            noise_rw = 0
+            noise_sm = 0
+            for t in range(0, len(connectome_list)):
+                noise_rw = noise_rw + abs(connectome_list[t] - connectome_list_noisy[t]).sum()
+                noise_sm = noise_sm + abs(smoothed_connectomes[t] - smoothed_connectomes_noisy[t]).sum()
+
+            print("Raw: ", noise_rw,
+                  "\nSM: ", noise_sm)
+
+            l = len(smoothed_connectomes)
+            nr.append(noise_rw/l)
+            ns.append(noise_sm/l)
+
             output_dir = os.path.join(data_dir, sub + '_smoothed')
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
@@ -209,3 +244,6 @@ if __name__ == "__main__":
             #print("\nNumber of component: ", n_comp_)
             #n_comp_, label_list = get_number_of_components(smoothed_connectomes)
             #print("\nNumber of component: ", n_comp_)
+
+    print("Raw: ", np.mean(nr), "+-", np.std(nr),
+          "Smooth: ", np.mean(ns), "+-", np.std(ns))
