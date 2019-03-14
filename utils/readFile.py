@@ -6,7 +6,7 @@ import time
 from args import Args
 
 
-def readMatrixFromTextFile(fname, debug=True):
+def readMatrixFromTextFile(fname, debug=False):
     if debug == True:
         print("Reading File: " + fname)
     a = []
@@ -24,14 +24,14 @@ def readMatricesFromDirectory(directory, normalize=True, method="row"):
     mat_list = []
     for file in files:
         file = os.path.join(directory, file)
-        if os.path.isdir(file):
+        if os.path.isdir(file) and Args.debug:
             print(file, " is a directory")
         elif os.path.isfile(file):
             a = readMatrixFromTextFile(join(directory, file))
             if normalize:
                 a = normalize_matrix(a, method)
             mat_list.append(a)
-        else:
+        elif Args.debug:
             print(file, " is weird")
 
     return mat_list

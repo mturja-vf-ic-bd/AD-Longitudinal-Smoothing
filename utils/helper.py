@@ -5,7 +5,7 @@ import numpy as np
 import copy
 import os
 from bct import *
-#from utils.readFile import *
+import sys
 
 
 def get_size(obj, seen=None):
@@ -283,6 +283,14 @@ def connectome_median(connectome_list):
     shape = connectome_list[0].shape
     element_list = groupElementsOfMatrices(connectome_list)
     return np.median(element_list, axis=1).reshape(shape)
+
+def get_avg_zeros_per_row(connectome_list):
+    res = 0
+    for connectome in connectome_list:
+        res = res + np.mean((connectome == 0).sum(axis=1))
+
+    res = res / len(connectome_list)
+    return res
 
 
 if __name__ == '__main__':

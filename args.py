@@ -3,18 +3,19 @@ import numpy as np
 
 class Args:
     n_eig = 0.005  # percent of eigen values to be zero
-    eps=1e-12
-    lmd = 0.4
+    eps = 1e-12
+    th = 0.01  # Threshold of connectome
     dfw = 1
-    sw = 0
+    sw = 1
     lmw = 1
-    k = 10
+    lmd = 1
+    k = 50
     debug = False
     n_iter = 10
     c_dim = (148, 148)  # matrix dimension
 
-    rbf_sigma = 0.1  # spread of rbf kernel
-    lambda_m = 0.001
+    rbf_sigma = 0.01  # spread of rbf kernel
+    lambda_m = 1
     beta = np.ones(c_dim) / 3
     mu = 0.5
     r = 2

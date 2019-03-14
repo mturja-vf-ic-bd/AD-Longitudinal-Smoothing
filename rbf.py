@@ -9,8 +9,6 @@ class RBF:
         self.debug = debug
 
     def rbf_optimization(self, S):
-        #S = np.insert(S, len(S), S[len(S) - 1])
-        #S = np.insert(S, 0, S[0])
         n = len(S)
         W = np.ones(n) / n
         time_points = [i for i in range(1, len(S) + 1)]

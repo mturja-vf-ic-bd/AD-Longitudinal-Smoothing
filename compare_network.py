@@ -3,6 +3,8 @@ from utils.get_hemisphere import *
 from bct import community_louvain
 from matplotlib import pyplot as plt
 import operator
+import numpy as np
+import os
 
 def n_comp(M):
     c_i, q = community_louvain(np.asarray(M), gamma=1)

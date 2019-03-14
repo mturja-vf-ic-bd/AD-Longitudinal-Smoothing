@@ -20,8 +20,9 @@ def grid_search(sub, param_set):
     E_min = 1000000000
     ps_min = None
     for ps in param_set:
-        dfw, sw, lmw, lmd = ps
-        _, _, E = optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw, lmd)
+        dfw, sw, lmw, lmd, pro, sig, lam = ps
+        _, _, E = optimize_longitudinal_connectomes(connectome_list, dfw=dfw, sw=sw, lmw=lmw, lmd=lmd,
+                                                    pro=pro, rbf_sigma=sig, lambda_m=lam)
         if E < E_min:
             E_min = E
             ps_min = ps
@@ -33,6 +34,6 @@ def grid_search(sub, param_set):
 
 
 if __name__ == '__main__':
-    param_set = [[0.1, 0.3, 0.5, 1], [0], [0.1, 0.3, 0.5, 1], [0.1, 0.3, 0.5, 1]]
+    param_set = [[1], [1], [0.1, 0.5, 1], [0.1, 0.5, 1], [0.1, 0.5, 1], [0.01, 0.1, 1], [0.001, 0.1, 1]]
     E_min, ps_min = grid_search('027_S_2219', param_set)
     print(ps_min)

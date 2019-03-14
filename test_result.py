@@ -92,10 +92,11 @@ def test_result(sub, connectome_list, smoothed_connectomes, max_ind, plot_all=Fa
 
 
 if __name__ == '__main__':
-    sub = '027_S_5110'
+    sub = '027_S_2219'
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
     connectome_list, smoothed_connectome = readSubjectFiles(sub, method="row")
-    max_ind = get_top_links(connectome_list[0], count=5, offset=100)
+    max_ind = get_top_links(connectome_list[2], count=4, offset=0)
+    print(get_avg_zeros_per_row(smoothed_connectome))
 
     #for t in range(len(connectome_list)):
     #    print((connectome_list[t] > 0.001).sum())
@@ -103,9 +104,9 @@ if __name__ == '__main__':
 
     test_result(sub, connectome_list, smoothed_connectome, max_ind, plot_all=True)
 
-    connectome_list_noisy = add_noise_all(connectome_list)
-    connectome_list_noisy = [row_normalize(connectome_list_noisy[t]) for t in range(0, len(connectome_list_noisy))]
-    smoothed_connectomes_noisy, M, E = optimize_longitudinal_connectomes(connectome_list_noisy, Args.dfw, Args.sw,
-                                                                         Args.lmw,
-                                                                         Args.lmd)
-    test_result(sub, connectome_list_noisy, smoothed_connectomes_noisy, max_ind, plot_all=True)
+    #connectome_list_noisy = add_noise_all(connectome_list)
+    #connectome_list_noisy = [row_normalize(connectome_list_noisy[t]) for t in range(0, len(connectome_list_noisy))]
+    #smoothed_connectomes_noisy, M, E = optimize_longitudinal_connectomes(connectome_list_noisy, Args.dfw, Args.sw,
+#                                                                         Args.lmw,
+#                                                                         Args.lmd)
+    #test_result(sub, connectome_list_noisy, smoothed_connectomes_noisy, max_ind, plot_all=True)
