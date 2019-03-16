@@ -251,7 +251,7 @@ def find_distance_between_matrices(mat_list):
     return d
 
 
-def add_noise(connectome, type='gaussian'):
+def add_noise(connectome, t=0.1, type='gaussian'):
     """
     adds gaussian noise to connectome
     :param connectome:
@@ -262,20 +262,26 @@ def add_noise(connectome, type='gaussian'):
     for row in range(shape[0]):
         for col in range(shape[1]):
             if type == 'gamma':
-                noise[row][col] = np.random.gamma(connectome[row][col], 0.1 * connectome[row][col])
+                noise[row][col] = np.random.gamma(connectome[row][col], t * connectome[row][col])
             else:
-                noise[row][col] = np.random.normal(connectome[row][col], connectome[row][col])
+                noise[row][col] = np.random.normal(connectome[row][col], t * connectome[row][col])
                 np.clip(noise, 0, 1)
 
     return noise
 
 
-def add_noise_all(connectome_list):
+def add_noise_all(connectome_list, t=0.1):
     connectome_list_noisy = []
     for t in range(len(connectome_list)):
-        connectome_list_noisy.append(add_noise(connectome_list[t]))
+        connectome_list_noisy.append(add_noise(connectome_list[t], t=0.01))
 
     return connectome_list_noisy
+
+
+def threshold(connectome, vmin=0, vmax=0):
+    connectome = (connectome >= vmin) * connectome
+    connectome = (connectome <= vmax) * connectome
+    return connectome
 
 
 def connectome_median(connectome_list):
@@ -283,6 +289,7 @@ def connectome_median(connectome_list):
     shape = connectome_list[0].shape
     element_list = groupElementsOfMatrices(connectome_list)
     return np.median(element_list, axis=1).reshape(shape)
+
 
 def get_avg_zeros_per_row(connectome_list):
     res = 0

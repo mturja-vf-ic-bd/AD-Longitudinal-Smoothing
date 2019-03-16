@@ -107,13 +107,37 @@ def get_subject_info(min_bound=-1):
     return sub_info
 
 
+def write_file(subject, data, name, data_dir=None, suffix=None):
+    """
+
+    :param subject: name of the subject
+    :param data: list of matrices
+    :param name: name of the matrices
+    :param suffix: to be added at the end of the directory name (for example: smooth, noisy)
+    """
+
+    if data_dir is None:
+        data_dir = os.path.join(os.path.join(Args.root_directory, os.pardir), 'AD-Data_Organized')
+
+    if suffix is None:
+        data_dir = os.path.join(data_dir, subject)
+    else:
+        data_dir = os.path.join(data_dir, subject + '_' + suffix)
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+
+    for i in range(0, len(data)):
+        wfile = os.path.join(data_dir, name[i])
+        np.savetxt(wfile, data[i])
+
+
 if __name__ == '__main__':
     from args import Args
     import collections
     from matplotlib import pyplot as plt
 
     args = Args()
-    data_dir = os.path.join(os.path.join(args.root_directory, os.pardir) , 'AD-Data_Organized')
+    data_dir = os.path.join(os.path.join(args.root_directory, os.pardir), 'AD-Data_Organized')
     rect_files = []
     for f in os.listdir(data_dir):
         if f.find('smoothed') == -1:

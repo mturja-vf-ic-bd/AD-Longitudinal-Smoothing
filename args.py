@@ -5,7 +5,7 @@ class Args:
     n_eig = 0.005  # percent of eigen values to be zero
     eps = 1e-12
     th = 0.01  # Threshold of connectome
-    dfw = 1
+    dfw = 3
     sw = 1
     lmw = 1
     lmd = 1

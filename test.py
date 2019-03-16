@@ -202,7 +202,7 @@ if __name__ == "__main__":
     # Read data
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
     #sub_names = get_subject_names(3)
-    sub_names = ["027_S_2219"]
+    sub_names = ["027_S_5110"]
     nr = []
     ns = []
     for sub in sub_names:
@@ -210,6 +210,11 @@ if __name__ == "__main__":
         if scan_count > 1:
             print("---------------\n\nRunning ", sub, " with scan count : ", scan_count)
             connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
+            connectome_list[2][0, 80] = 0.5
+            connectome_list[2][3, 10] = 0.7
+            connectome_list[0][10, 30] = 0.6
+            connectome_list[1][5, 40] = 0.6
+            connectome_list[3][40, 100] = 0.7
             smoothed_connectomes, M, E = optimize_longitudinal_connectomes(connectome_list, Args.dfw, Args.sw, Args.lmw,
                                                                            Args.lmd)
 
