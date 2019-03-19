@@ -129,6 +129,7 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw,
 
     M = connectome_median(connectome_list)
     loss = 0
+    F = None
     # Iteration
     for i in range(0, Args.n_iter):
         if Args.debug:
@@ -139,6 +140,7 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw,
         D = np.diag(M_s.sum(axis=1))
         L = np.subtract(D, M_s)
         dM = abs(1 - M_sparse)
+        F_old = F
         eig_val, F, _ = get_eigen(L, n_modes)
         #F /= F.sum(axis=0)
         dF = L2_distance(np.transpose(F), np.transpose(F))
@@ -186,9 +188,22 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw,
         if Args.debug:
             print("lamda: ", lmd)
         print("Loss: ", loss)
+
+
         if prev_loss < loss and prev_loss != 0:
             loss = prev_loss
             smoothed_connectomes = prev_smoothed_connectomes
+            '''if sum(eig_val[:n_modes]) > 1e-2:
+                lmd = lmd * 2
+                print("Increasing lmd")
+                continue
+            elif eig_val[n_modes] < 1e-5:
+                print("Decreasing lmd")
+                lmd = lmd / 2
+                F = F_old
+                continue
+            else:
+                break'''
             break
 
     #smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
@@ -210,11 +225,6 @@ if __name__ == "__main__":
         if scan_count > 1:
             print("---------------\n\nRunning ", sub, " with scan count : ", scan_count)
             connectome_list = readMatricesFromDirectory(os.path.join(data_dir, sub))
-            connectome_list[2][0, 80] = 0.5
-            connectome_list[2][3, 10] = 0.7
-            connectome_list[0][10, 30] = 0.6
-            connectome_list[1][5, 40] = 0.6
-            connectome_list[3][40, 100] = 0.7
             smoothed_connectomes, M, E = optimize_longitudinal_connectomes(connectome_list, Args.dfw, Args.sw, Args.lmw,
                                                                            Args.lmd)
 
@@ -245,10 +255,10 @@ if __name__ == "__main__":
                 with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
                     np.savetxt(out, smoothed_connectomes[t])
 
-            n_comp_, label_list = get_number_of_components(connectome_list)
-            print("\nNumber of component: ", n_comp_)
-            n_comp_, label_list = get_number_of_components(smoothed_connectomes)
-            print("\nNumber of component: ", n_comp_)
+            #n_comp_, label_list = get_number_of_components(connectome_list)
+            #print("\nNumber of component: ", n_comp_)
+            #n_comp_, label_list = get_number_of_components(smoothed_connectomes)
+            #print("\nNumber of component: ", n_comp_)
 
     #print("Raw: ", np.mean(nr), "+-", np.std(nr),
     #      "Smooth: ", np.mean(ns), "+-", np.std(ns))

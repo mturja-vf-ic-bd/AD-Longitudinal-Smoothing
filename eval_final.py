@@ -1,20 +1,20 @@
 import os
 from test import optimize_longitudinal_connectomes
-from utils.helper import get_subject_names, add_noise_all
-from args import Args
+from utils.helper import get_subject_names, add_noise_all, threshold
 from utils.readFile import readSubjectFiles, write_file
 import numpy as np
+from args import Args
 
 def compute_psnr():
     sub_names = get_subject_names(3)
-    threshold = 0.0007  # threshold for raw connectome to have comaparable sparsity with smoothed version
+    threshold = Args.threshold  # threshold for raw connectome to have comaparable sparsity with smoothed version
     noise_rw = 0
     noise_sm = 0
     for sub in sub_names:
         connectome_list, smoothed_connectomes = readSubjectFiles(sub, method="row")
         N = connectome_list[0].shape[0]
 
-        connectome_list_noisy = add_noise_all(connectome_list, t=0.01)
+        connectome_list_noisy = add_noise_all(connectome_list, t=0.1)
         smoothed_connectomes_noisy, M, E = optimize_longitudinal_connectomes(connectome_list_noisy, Args.dfw, Args.sw,
                                                                              Args.lmw,
                                                                              Args.lmd)

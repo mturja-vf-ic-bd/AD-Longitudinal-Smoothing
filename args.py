@@ -5,11 +5,12 @@ class Args:
     n_eig = 0.005  # percent of eigen values to be zero
     eps = 1e-12
     th = 0.01  # Threshold of connectome
-    dfw = 3
+    dfw = 1
     sw = 1
     lmw = 1
-    lmd = 1
+    lmd = 100
     k = 50
+    threshold = 0.0007 # threshold for raw connectomes
     debug = False
     n_iter = 10
     c_dim = (148, 148)  # matrix dimension

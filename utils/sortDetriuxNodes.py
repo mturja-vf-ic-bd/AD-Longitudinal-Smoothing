@@ -10,6 +10,8 @@ def sort_matrix(matrix):
 		pt = json.load(f)
 	f.close()
 	order = np.argsort([pt[i]["VisuOrder"] for i in range(0, len(pt))])
+	l = len(order)
+	order[int(l/2):l] = np.flip(order[int(l/2):l])
 	sorted_matrix = matrix[order, :]
 	sorted_matrix = sorted_matrix[:, order]
 	return sorted_matrix

@@ -273,12 +273,12 @@ def add_noise(connectome, t=0.1, type='gaussian'):
 def add_noise_all(connectome_list, t=0.1):
     connectome_list_noisy = []
     for t in range(len(connectome_list)):
-        connectome_list_noisy.append(add_noise(connectome_list[t], t=0.01))
+        connectome_list_noisy.append(add_noise(connectome_list[t], t=t))
 
     return connectome_list_noisy
 
 
-def threshold(connectome, vmin=0, vmax=0):
+def threshold(connectome, vmin=0, vmax=1):
     connectome = (connectome >= vmin) * connectome
     connectome = (connectome <= vmax) * connectome
     return connectome

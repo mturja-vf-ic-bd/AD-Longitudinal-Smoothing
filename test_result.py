@@ -1,12 +1,16 @@
-from plotly.offline.offline import matplotlib
-
 from utils.readFile import *
 from utils.helper import *
 from matplotlib import pyplot as plt
-from utils.sortDetriuxNodes import sort_matrix
-#matplotlib.use('TkAgg')
+from plot_functions import plot_matrix_all
 from args import Args
 import json
+
+def plot_matrix(connectome, fname="connectome", vmin=0, vmax=0.25):
+    #plt.set_size_inches(10, 10)
+    im = plt.matshow(connectome, vmin=vmin, vmax=vmax)
+    plt.colorbar(im)
+    #plt.show()
+    plt.savefig(fname + '.png')
 
 
 def test_result(sub, connectome_list, smoothed_connectomes, max_ind, plot_all=False):
@@ -14,22 +18,9 @@ def test_result(sub, connectome_list, smoothed_connectomes, max_ind, plot_all=Fa
     data_dir = os.path.join(os.path.join(args.root_directory, os.pardir), 'AD-Data_Organized')
     file_parcellation_table = os.path.join(
         os.path.join(os.path.join(data_dir, sub), 'helper_files/parcellationTable.json'))
-    vmin = 0
-    vmax = 0.25
-    if plot_all:
-        T = len(connectome_list)
-        fig = plt.gcf()
-        fig.set_size_inches(40, 20)
-        for t in range(0, T):
-            plt.subplot(2, T, t + 1)
-            plt.imshow(connectome_list[t], vmin=vmin, vmax=vmax, cmap='bwr')
-            #plt.colorbar(orientation='horizontal')
-            plt.subplot(2, T, t + T + 1)
-            plt.imshow(smoothed_connectomes[t], vmin=vmin, vmax=vmax, cmap='bwr')
-            #plt.colorbar(orientation='horizontal')
-        #plt.colorbar(orientation='horizontal')
-        plt.show()
-        fig.savefig("matplt_full" + ".png", bbox_inches='tight')
+    plot_matrix_all(connectome_list, fname="raw")
+    plot_matrix_all(smoothed_connectomes, fname="smoothed")
+
 
     # Reading parcellation table to get the coordinates of each region
     with open(file_parcellation_table) as f:
@@ -43,7 +34,7 @@ def test_result(sub, connectome_list, smoothed_connectomes, max_ind, plot_all=Fa
 
     fig = plt.gcf()
     fig.set_size_inches(30, 15)
-    fig.savefig('test2png.png', dpi=100)
+    #fig.savefig('test2png.png', dpi=100)
 
     for a, b in max_ind:
         print("a, b = ", a, b)
@@ -99,26 +90,36 @@ if __name__ == '__main__':
     sub_names = get_subject_names(3)
     sub = '027_S_5110'
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
-    connectome_list, smoothed_connectomes = readSubjectFiles(sub, method="row")
-    N = connectome_list[0].shape[0]
-    max_ind = get_top_links(connectome_list[2], count=4, offset=0)
-    #connectome_list = [(connectome_list[t] > threshold) for t in range(len(connectome_list))]
-    #print(get_avg_zeros_per_row(connectome_list))
+    connectomes, smoothed_connectomes = readSubjectFiles(sub, method="row")
+    N = connectomes[0].shape[0]
+    max_ind = get_top_links(connectomes[2], count=4, offset=0)
 
     vmin=0
-    vmax=1
-    for t in range(0, len(connectome_list)):
-        connectome_list[t] = threshold(sort_matrix(connectome_list[t]), vmin, vmax)
-        smoothed_connectomes[t] = threshold(sort_matrix(smoothed_connectomes[t]), vmin, vmax)
+    vmax=0.005
+    '''
+    for t in range(0, len(connectomes)):
+        connectomes[t] = sort_matrix(connectomes[t])
+        smoothed_connectomes[t] = sort_matrix(smoothed_connectomes[t])
 
-    test_result(sub, connectome_list, smoothed_connectomes, max_ind, plot_all=True)
+    test_result(sub, connectomes, smoothed_connectomes, max_ind, plot_all=True)
+    '''
+    for t in range(0, len(connectomes)):
+        connectomes[t] = threshold(connectomes[t], vmin, vmax)
+        smoothed_connectomes[t] = threshold(smoothed_connectomes[t], vmin, vmax)
+
+    ind = 0
+    plot_matrix(connectomes[ind], "raw_single", vmin=vmin, vmax=vmax)
+    plot_matrix(smoothed_connectomes[ind], "smooth_single", vmin=vmin, vmax=vmax)
 
 
-    connectome_list_noisy = add_noise_all(connectome_list, t=0.1)
-    smoothed_connectomes_noisy, M, E = optimize_longitudinal_connectomes(connectome_list_noisy, Args.dfw, Args.sw,
-                                                                         Args.lmw,
-                                                                         Args.lmd)
-    test_result(sub, connectome_list_noisy, smoothed_connectomes_noisy, max_ind, plot_all=True)
+
+
+    #connectome_list_noisy = add_noise_all(connectome_list, t=0.1)
+    #smoothed_connectomes_noisy, M, E = optimize_longitudinal_connectomes(connectome_list_noisy, Args.dfw, Args.sw,
+     #                                                                    Args.lmw,
+     #                                                                    Args.lmd)
+    #max_ind = get_top_links(connectome_list_noisy[1], count=4, offset=0)
+    #test_result(sub, connectome_list_noisy, smoothed_connectomes_noisy, max_ind, plot_all=True)
     '''
     # Compute noise in raw
     threshold = 0.0007  # threshold for raw connectome to have comaparable sparsity with smoothed version
