@@ -10,7 +10,7 @@ class Args:
     lmw = 1
     lmd = 100
     k = 50
-    threshold = 0.0007 # threshold for raw connectomes
+    threshold = 0.0002 # threshold for raw connectomes
     debug = False
     n_iter = 10
     c_dim = (148, 148)  # matrix dimension

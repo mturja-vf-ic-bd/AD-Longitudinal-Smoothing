@@ -6,8 +6,8 @@ import operator
 import numpy as np
 import os
 
-def n_comp(M):
-    c_i, q = community_louvain(np.asarray(M), gamma=1)
+def n_comp(M, gamma=1):
+    c_i, q = community_louvain(np.asarray(M), gamma=gamma)
     return len(set(c_i))
 
 

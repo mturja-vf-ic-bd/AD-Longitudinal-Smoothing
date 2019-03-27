@@ -187,23 +187,25 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw,
 
         if Args.debug:
             print("lamda: ", lmd)
-        print("Loss: ", loss)
+            print("Loss: ", loss)
 
 
         if prev_loss < loss and prev_loss != 0:
             loss = prev_loss
             smoothed_connectomes = prev_smoothed_connectomes
-            '''if sum(eig_val[:n_modes]) > 1e-2:
+            '''
+            if sum(eig_val[:n_modes]) > 1e-2:
                 lmd = lmd * 2
-                print("Increasing lmd")
+                #print("Increasing lmd")
                 continue
             elif eig_val[n_modes] < 1e-5:
-                print("Decreasing lmd")
+                #print("Decreasing lmd")
                 lmd = lmd / 2
                 F = F_old
                 continue
             else:
-                break'''
+                break
+            '''
             break
 
     #smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
@@ -254,11 +256,3 @@ if __name__ == "__main__":
             for t in range(0, len(smoothed_connectomes)):
                 with open(os.path.join(output_dir, sub + "_smoothed_t" + str(t + 1)), 'w') as out:
                     np.savetxt(out, smoothed_connectomes[t])
-
-            #n_comp_, label_list = get_number_of_components(connectome_list)
-            #print("\nNumber of component: ", n_comp_)
-            #n_comp_, label_list = get_number_of_components(smoothed_connectomes)
-            #print("\nNumber of component: ", n_comp_)
-
-    #print("Raw: ", np.mean(nr), "+-", np.std(nr),
-    #      "Smooth: ", np.mean(ns), "+-", np.std(ns))

@@ -1,10 +1,6 @@
-from args import Args
 from utils.readFile import readSubjectFiles
-from bct import *
 from utils.helper import *
-from matplotlib import pyplot as plt
 import numpy as np
-import random
 from compare_network import get_number_of_components
 
 
@@ -35,6 +31,9 @@ class Evaluation:
         elif property == 'modularity':
             rw_cc, _ = get_number_of_components(self.rw_data)
             smth_cc, _ = get_number_of_components(self.smth_data)
+        elif property == 'path_length':
+            rw_cc = [charpath(rw)[0] for rw in self.rw_data]
+            smth_cc = [charpath(sm)[0] for sm in self.smth_data]
 
         # rw_cc_ent = get_entropy_list(rw_cc)
         # smth_cc_ent = get_entropy_list(smth_cc)
@@ -85,32 +84,14 @@ def normalize_mean_std(x):
 
 
 if __name__ == '__main__':
-    sub_names = get_subject_names(3)
-    '''
-    rw_ent_list = {}
-    sw_ent_list = {}
-    for subject in sub_names:
-        evl = Evaluation(subject)
-        rw_ent, sw_ent = evl.evaluation_cc()
-        # print(rw_ent, sw_ent)
-        rw_ent_list[subject] = rw_ent
-        sw_ent_list[subject] = sw_ent
-
-    plot_count = 5
-    rand_sample = random.sample(sub_names, plot_count)
-
-    i = 0
-    fig = plt.gcf()
-    fig.set_size_inches(20, 15)
-    for sub in rand_sample:
-        ax_rw = plt.subplot(plot_count, 1, i + 1)
-        # ax_sm = plt.subplot(plot_count, 1, 2*i + 2)
-        plot_data(normalize_mean_std(rw_ent_list[sub]), ax_rw, c='r')
-        plot_data(normalize_mean_std(sw_ent_list[sub]), ax_rw, c='b')
-        i = i + 1
-
-    plt.show()
-    '''
-    for subject in sub_names:
-        evl = Evaluation(subject)
-        print(evl.evaluate_binary_consistency())
+    sub_names = get_subject_names(5)
+    for sub in sub_names:
+        evl = Evaluation(sub)
+        rw_cc, sm_cc = evl.evaluation_cc('modularity')
+        t = [i+1 for i in range(len(rw_cc))]
+        import pylab
+        rw_cc = normalize_mean_std(rw_cc)
+        sm_cc = normalize_mean_std(sm_cc)
+        pylab.plot(t, rw_cc, '-r')
+        pylab.plot(t, sm_cc, '-b')
+        pylab.show()

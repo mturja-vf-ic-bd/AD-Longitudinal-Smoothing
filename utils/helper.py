@@ -217,6 +217,7 @@ def get_centrality_measure(M):
     bc /= bc.sum()
     return np.dot(bc, M.sum(axis=1))
 
+
 def groupElementsOfMatrices(input_mat_list):
     mat_list = []
     i = 1
@@ -270,10 +271,10 @@ def add_noise(connectome, t=0.1, type='gaussian'):
     return noise
 
 
-def add_noise_all(connectome_list, t=0.1):
+def add_noise_all(connectome_list, noise):
     connectome_list_noisy = []
     for t in range(len(connectome_list)):
-        connectome_list_noisy.append(add_noise(connectome_list[t], t=t))
+        connectome_list_noisy.append(add_noise(connectome_list[t], noise))
 
     return connectome_list_noisy
 
@@ -282,6 +283,10 @@ def threshold(connectome, vmin=0, vmax=1):
     connectome = (connectome >= vmin) * connectome
     connectome = (connectome <= vmax) * connectome
     return connectome
+
+def threshold_all(connectome_list, vmin=0, vmax=1):
+    connectome_list_th = [threshold(connectome_list[t], vmin, vmax) for t in range(len(connectome_list))]
+    return connectome_list_th
 
 
 def connectome_median(connectome_list):
@@ -299,20 +304,13 @@ def get_avg_zeros_per_row(connectome_list):
     res = res / len(connectome_list)
     return res
 
+def plot_matrix(connectome, fname="connectome", vmin=0, vmax=0.25):
+    from matplotlib import pyplot as plt
+    im = plt.matshow(connectome, vmin=vmin, vmax=vmax)
+    plt.colorbar(im)
+    plt.show()
 
-if __name__ == '__main__':
-    A = np.ones((3, 3))
-    B = 2 * np.ones((3, 3))
-    C = 4 * np.ones((3, 3))
-    D = [A, B, C]
-
-    sub = '027_S_2219'
-    data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
-    connectome_list, smoothed_connectome = readSubjectFiles(sub, method="row")
-    M_c = connectome_median(D)
-    print(M_c)
-
-
-
-
-
+def rescale_sm_mat_to_raw(raw, sm):
+    max_rw = np.max(raw, axis=None)
+    max_sm = np.max(sm, axis=None)
+    return min(max_rw/max_sm, 1.4) * sm
