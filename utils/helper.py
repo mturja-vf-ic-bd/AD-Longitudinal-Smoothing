@@ -203,12 +203,17 @@ def get_histogram_list(mat_list, bins=None):
     return hist
 
 
-def get_top_links(connectome, count=1, offset=0):
+def get_top_links(connectome, count=1, offset=0, weight=False):
+    connectome = np.array(connectome)
     row, col = connectome.shape
     idx = np.argsort(connectome, axis=None)[::-1]
     idx_row = idx // col
     idx_col = idx % col
-    idx_coord = list(zip(idx_row, idx_col))
+    if not weight:
+        idx_coord = list(zip(idx_row, idx_col))
+    else:
+        idx_coord = list(zip(idx_row, idx_col, connectome[idx_row, idx_col]))
+
     return idx_coord[offset:count + offset]
 
 
@@ -265,9 +270,13 @@ def add_noise(connectome, t=0.1, type='gaussian'):
             if type == 'gamma':
                 noise[row][col] = np.random.gamma(connectome[row][col], t * connectome[row][col])
             else:
-                noise[row][col] = np.random.normal(connectome[row][col], t * connectome[row][col])
-                np.clip(noise, 0, 1)
+                a = connectome[row][col]
+                if a > 0:
+                    noise[row][col] = np.random.normal(a, t * a)
+                else:
+                    noise[row][col] = np.random.uniform(low=0, high=0.02)
 
+    noise = np.clip(noise, 0, 1)
     return noise
 
 
@@ -280,9 +289,10 @@ def add_noise_all(connectome_list, noise):
 
 
 def threshold(connectome, vmin=0, vmax=1):
-    connectome = (connectome >= vmin) * connectome
-    connectome = (connectome <= vmax) * connectome
-    return connectome
+    connectome_th = copy.deepcopy(connectome)
+    connectome_th[connectome_th < vmin] = 0
+    connectome_th[connectome_th > vmax] = 0
+    return connectome_th
 
 def threshold_all(connectome_list, vmin=0, vmax=1):
     connectome_list_th = [threshold(connectome_list[t], vmin, vmax) for t in range(len(connectome_list))]
@@ -314,3 +324,49 @@ def rescale_sm_mat_to_raw(raw, sm):
     max_rw = np.max(raw, axis=None)
     max_sm = np.max(sm, axis=None)
     return min(max_rw/max_sm, 1.4) * sm
+
+def get_parcellation_table():
+    pt_name = Args.root_directory + "/utils/parcellationTable_Ordered.json"  # parcellation table to edit VisuOrder
+    # Read parcellation table to edit VisuOrder
+    with open(pt_name) as f:
+        pt = json.load(f)
+    f.close()
+    return pt
+    
+def get_lobe_idx():
+    pt = get_parcellation_table()
+    lobe_idx = {}
+    for entry in pt:
+        lobe = entry["VisuHierarchy"].split('.')[-1]
+        row = entry["MatrixRow"]
+        if row < len(pt) / 2:
+            lobe = lobe + '.l'
+        else:
+            lobe = lobe + '.r'
+
+        if lobe in lobe_idx.keys():
+            lobe_idx[lobe].append(row)
+        else:
+            lobe_idx[lobe] = [row]
+
+    return lobe_idx
+
+def get_lobe_order(ignore_hem=False):
+    if ignore_hem:
+        return ["Frontal", "Limbic", "Insula", "Temporal", "Occipital", "Parietal",
+                "Parietal", "Occipital", "Temporal", "Insula", "Limbic", "Frontal"]
+
+    return ["Frontal.l", "Limbic.l", "Insula.l", "Temporal.l", "Occipital.l", "Parietal.l",
+                  "Parietal.r", "Occipital.r", "Temporal.r", "Insula.r", "Limbic.r", "Frontal.r"]
+
+def get_sorted_node_count():
+    lobe_order = get_lobe_order()
+    lobe_idx = get_lobe_idx()
+    node_count = []
+    for lobe in lobe_order:
+        node_count.append(len(lobe_idx[lobe]))
+
+    return node_count
+
+if __name__ == '__main__':
+    get_lobe_idx()

@@ -5,7 +5,7 @@ import matplotlib
 from sklearn import metrics
 
 
-def plot_matrix_all(connectomes, fname="matplt", vmin=0, vmax=0.25, savefig=True):
+def plot_matrix_all(connectomes, fname="matplt", vmin=0, vmax=0.25, savefig=False):
     T = len(connectomes)
     fig = plt.figure(figsize=(6*T, 5))
 
@@ -19,18 +19,19 @@ def plot_matrix_all(connectomes, fname="matplt", vmin=0, vmax=0.25, savefig=True
     t = 0
     for ax in grid:
         ax.set_axis_off()
-        im = ax.matshow(connectomes[t], vmin=vmin, vmax=vmax)
+        im = ax.matshow(connectomes[t], vmin=vmin, vmax=vmax, cmap='plasma')
         t = t + 1
 
         cbar = grid.cbar_axes[0].colorbar(im)
 
         cbar.ax.set_yticks(np.arange(vmin, vmax * 1.1, (vmax - vmin) / 4))
+        cbar.ax.tick_params(labelsize=30)
         cbar.ax.set_yticklabels(
-            [str(vmin), str(round((vmax - vmin) / 4, 4)), str(round((vmax - vmin) / 2, 4)),
-             str(round((vmax - vmin) * 3 / 4, 4)), str(vmax)])
+            [str(vmin), str(round((vmax - vmin) / 4, 2)), str(round((vmax - vmin) / 2, 2)),
+             str(round((vmax - vmin) * 3 / 4, 2)), str(vmax)])
 
     if savefig:
-        matplotlib.use('Agg')
+        #matplotlib.use('Agg')
         fig.tight_layout()
         fig.savefig(fname + ".png")
     else:
@@ -143,7 +144,7 @@ def plot_roc(probs, y_test, title, fname):
     pylab.figure(0).clf()
     pylab.figure(figsize=(20, 10))
     font = {'weight': 'bold',
-            'size': 30}
+            'size': 35}
 
     pylab.rc('font', **font)
 
@@ -151,16 +152,25 @@ def plot_roc(probs, y_test, title, fname):
         pred = prob[:, 1]
         fpr, tpr, thresh = metrics.roc_curve(y_test, pred)
         auc = metrics.roc_auc_score(y_test, pred)
+        width=40
         if i == 0:
-            pylab.plot(fpr, tpr, 'r-', label=title[i] + ", auc=" + str(round(auc, 2)), linewidth=5)
+            pylab.plot(fpr, tpr, 'r-', label=title[i] + ", auc=" + str(round(auc, 2)), linewidth=width)
         elif i == 1:
-            pylab.plot(fpr, tpr, '+--', color=[1, 0.7, 0], label=title[i] + ", auc=" + str(round(auc, 2)), linewidth=5)
+            pylab.plot(fpr, tpr, '+--', color=[1, 0.7, 0], label=title[i] + ", auc=" + str(round(auc, 2)), linewidth=width)
         else:
-            pylab.plot(fpr, tpr, 'bo--', label=title[i] + ", auc=" + str(round(auc, 2)), linewidth=5)
+            pylab.plot(fpr, tpr, 'bo--', label=title[i] + ", auc=" + str(round(auc, 2)), linewidth=width)
 
-        pylab.legend(loc='lower right', prop={'size': 30})
+        pylab.legend(loc='lower right', prop={'size': 35})
 
 
     #matplotlib.use("Agg")
     pylab.tight_layout()
     pylab.savefig(fname + ".png")
+
+def plot_hub_eval(rw_hub_match, sm_hub_match):
+    plt.bar(np.arange(0, 148, 1), rw_hub_match)
+    plt.ylim(0, 2)
+    plt.show()
+    plt.bar(np.arange(0, 148, 1), sm_hub_match)
+    plt.ylim(0, 2)
+    plt.show()

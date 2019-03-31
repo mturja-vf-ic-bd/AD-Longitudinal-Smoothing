@@ -8,7 +8,7 @@ class Args:
     dfw = 1
     sw = 1
     lmw = 1
-    lmd = 100
+    lmd = 1
     k = 50
     threshold = 0.0002 # threshold for raw connectomes
     debug = False

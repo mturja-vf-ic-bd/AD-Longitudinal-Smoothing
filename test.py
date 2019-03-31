@@ -117,7 +117,7 @@ def initialize_connectomes(connectome_list):
 
 
 def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw,
-                                      lmd, pro=Args.pro, rbf_sigma=Args.rbf_sigma, lambda_m=Args.lambda_m):
+                                      lmd, pro=Args.pro, rbf_sigma=Args.rbf_sigma, lambda_m=Args.lambda_m, fit_rbf=True):
     c_dim = connectome_list[0].shape
     rbf_fit = RBF(rbf_sigma, lambda_m, Args.debug)
     wt_local = [np.ones(Args.c_dim) for i in range(0, len(connectome_list))]
@@ -183,7 +183,8 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw,
             wt_local[t] = np.exp(-((smoothed_connectomes[t] - row_normalize(M_sparse)) ** 2) / (pro ** 2))
 
         M = find_mean(smoothed_connectomes, wt_local)  # link-wise mean of the connectomes
-        smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
+        if fit_rbf:
+            smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
 
         if Args.debug:
             print("lamda: ", lmd)
@@ -193,7 +194,7 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw,
         if prev_loss < loss and prev_loss != 0:
             loss = prev_loss
             smoothed_connectomes = prev_smoothed_connectomes
-            '''
+
             if sum(eig_val[:n_modes]) > 1e-2:
                 lmd = lmd * 2
                 #print("Increasing lmd")
@@ -205,8 +206,8 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw,
                 continue
             else:
                 break
-            '''
-            break
+
+            #break
 
     #smoothed_connectomes = rbf_fit.fit_rbf_to_longitudinal_connectomes(smoothed_connectomes)
     for t in range(0, len(smoothed_connectomes)):
@@ -218,8 +219,8 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw,
 if __name__ == "__main__":
     # Read data
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
-    #sub_names = get_subject_names(3)
-    sub_names = ["027_S_5110"]
+    sub_names = get_subject_names(4)
+    #sub_names = ["027_S_5110"]
     nr = []
     ns = []
     for sub in sub_names:
@@ -230,24 +231,6 @@ if __name__ == "__main__":
             smoothed_connectomes, M, E = optimize_longitudinal_connectomes(connectome_list, Args.dfw, Args.sw, Args.lmw,
                                                                            Args.lmd)
 
-            '''
-            connectome_list_noisy = add_noise_all(connectome_list)
-            smoothed_connectomes_noisy, M, E = optimize_longitudinal_connectomes(connectome_list_noisy, Args.dfw, Args.sw, Args.lmw,
-                                                                   Args.lmd)
-            # Compute noise in raw
-            noise_rw = 0
-            noise_sm = 0
-            for t in range(0, len(connectome_list)):
-                noise_rw = noise_rw + abs(connectome_list[t] - connectome_list_noisy[t]).sum()
-                noise_sm = noise_sm + abs(smoothed_connectomes[t] - smoothed_connectomes_noisy[t]).sum()
-
-            print("Raw: ", noise_rw,
-                  "\nSM: ", noise_sm)
-
-            l = len(smoothed_connectomes)
-            nr.append(noise_rw/l)
-            ns.append(noise_sm/l)
-            '''
 
             output_dir = os.path.join(data_dir, sub + '_smoothed')
             if not os.path.exists(output_dir):

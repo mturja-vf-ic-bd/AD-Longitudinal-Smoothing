@@ -84,14 +84,30 @@ def normalize_mean_std(x):
 
 
 if __name__ == '__main__':
-    sub_names = get_subject_names(5)
+    sub_names = ["007_S_4620"]
+    import pylab
+
+    pylab.figure(figsize=(10, 4))
+    font = {'weight': 'bold',
+            'size': 15}
+
+    pylab.rc('font', **font)
     for sub in sub_names:
         evl = Evaluation(sub)
         rw_cc, sm_cc = evl.evaluation_cc('modularity')
         t = [i+1 for i in range(len(rw_cc))]
-        import pylab
-        rw_cc = normalize_mean_std(rw_cc)
-        sm_cc = normalize_mean_std(sm_cc)
-        pylab.plot(t, rw_cc, '-r')
-        pylab.plot(t, sm_cc, '-b')
+
+        #rw_cc = normalize_mean_std(rw_cc)
+        #sm_cc = normalize_mean_std(sm_cc)
+        pylab.plot(t, rw_cc, '-r', linewidth=4)
+        pylab.ylim(6, 8)
+        pylab.show()
+
+        pylab.figure(figsize=(10, 4))
+        font = {'weight': 'bold',
+                'size': 15}
+
+        pylab.rc('font', **font)
+        pylab.plot(t, sm_cc, '-b', linewidth=4)
+        pylab.ylim(9, 11)
         pylab.show()
