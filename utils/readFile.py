@@ -1,9 +1,10 @@
 import os
 from os.path import join
 import numpy as np
-from utils.helper import rescale_matrix
+from utils.helper import rescale_matrix, get_parcellation_table
 import time
 from args import Args
+from utils.sortDetriuxNodes import sort_matrix
 
 
 def readMatrixFromTextFile(fname, debug=False):
@@ -64,11 +65,14 @@ def read_csv(filename, skiphead=True, project=None):
 
     return table
 
-def readSubjectFiles(subject, method="whole"):
+def readSubjectFiles(subject, method="whole", sort=True):
     dir_rw = os.path.join(Args.data_directory, subject)
     dir_smth = os.path.join(Args.data_directory, subject + '_smoothed')
     rw_data = readMatricesFromDirectory(dir_rw, True, method)
     smth_data = readMatricesFromDirectory(dir_smth, False)
+    if sort:
+        rw_data = [sort_matrix(rw)[0] for rw in rw_data]
+        smth_data = [sort_matrix(sm)[0] for sm in smth_data]
 
     if method == "whole":
         for t in range(0, len(rw_data)):
@@ -129,6 +133,27 @@ def write_file(subject, data, name, data_dir=None, suffix=None):
     for i in range(0, len(data)):
         wfile = os.path.join(data_dir, name[i])
         np.savetxt(wfile, data[i])
+
+
+def write_node_file(node_size, color, out_file):
+    pt = get_parcellation_table()
+    with open(out_file, 'w') as f:
+        f.write('#destriux 148\n')
+        for i, p in enumerate(pt):
+            #Fix coordinates
+            if i < 74:
+                p["coord"][0] = p["coord"][0] - 30
+                p["coord"][1] = p["coord"][1]*0.9 - 20
+                p["coord"][2] = p["coord"][2] + 10
+            else:
+                p["coord"][0] = p["coord"][0] + 30
+                p["coord"][1] = p["coord"][1]*0.9 - 20
+                p["coord"][2] = p["coord"][2] + 10
+            f.write("%f %f %f %s %f %s\n" % (p["coord"][0], p["coord"][1],
+                    p["coord"][2], color[i],
+                    node_size[i]*5, p["name"]))
+
+
 
 
 if __name__ == '__main__':

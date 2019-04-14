@@ -5,9 +5,10 @@ import matplotlib
 from sklearn import metrics
 
 
-def plot_matrix_all(connectomes, fname="matplt", vmin=0, vmax=0.25, savefig=False):
+def plot_matrix_all(connectomes, fname="matplt", vmin=0, vmax=0.25, savefig=True):
     T = len(connectomes)
     fig = plt.figure(figsize=(6*T, 5))
+    plt.rc('font', family='Times New Roman')
 
     grid = AxesGrid(fig, 111,
                     nrows_ncols=(1, T),
@@ -142,25 +143,30 @@ def plot_confusion_matrix(y_true, y_pred, classes,
 def plot_roc(probs, y_test, title, fname):
     import pylab
     pylab.figure(0).clf()
-    pylab.figure(figsize=(20, 10))
+    pylab.figure(figsize=(20, 12))
+    pylab.axis('off')
+    pylab.rc('font', family='Times New Roman')
     font = {'weight': 'bold',
-            'size': 35}
+            'size': 50}
 
     pylab.rc('font', **font)
 
     for i, prob in enumerate(probs):
         pred = prob[:, 1]
         fpr, tpr, thresh = metrics.roc_curve(y_test, pred)
-        auc = metrics.roc_auc_score(y_test, pred)
-        width=40
-        if i == 0:
-            pylab.plot(fpr, tpr, 'r-', label=title[i] + ", auc=" + str(round(auc, 2)), linewidth=width)
-        elif i == 1:
-            pylab.plot(fpr, tpr, '+--', color=[1, 0.7, 0], label=title[i] + ", auc=" + str(round(auc, 2)), linewidth=width)
-        else:
-            pylab.plot(fpr, tpr, 'bo--', label=title[i] + ", auc=" + str(round(auc, 2)), linewidth=width)
+        auc = round(metrics.roc_auc_score(y_test, pred), 2)
 
-        pylab.legend(loc='lower right', prop={'size': 35})
+        label = 'AUC: ' + str(auc)
+        width = 15
+        if i == 0:
+            pylab.plot(fpr, tpr, 'r-', label=label, markersize=30, linewidth=width)
+        elif i == 1:
+            pylab.plot(fpr, tpr, 'o--', color=[1, 0.7, 0], markersize=30, label=label, linewidth=width)
+        else:
+            pylab.plot(fpr, tpr, 'bo-', markersize=30, label=label, linewidth=width)
+
+        pylab.legend(loc='lower right', prop={'size': 60})
+        pylab.tight_layout()
 
 
     #matplotlib.use("Agg")

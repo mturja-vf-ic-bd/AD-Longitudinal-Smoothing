@@ -368,5 +368,33 @@ def get_sorted_node_count():
 
     return node_count
 
+def forward_diff(feature):
+    T, n = feature.shape
+    diff = np.empty((T - 1, n))
+    for i in range(0, T - 1):
+        diff[i, :] = (feature[i + 1] - feature[i])
+
+    return diff
+
+def forward_diff_2(feature):
+    T, n = feature.shape
+    diff = np.empty((T - 2, n))
+    for i in range(1, T - 1):
+        diff[i - 1, :] = (feature[i + 1] + feature[i - 1] - 2 * feature[i])
+    return diff
+
+    return diff
+def central_difference_of_links(connectome_list):
+    n_feat = connectome_list[0].shape[0] * connectome_list[0].shape[1]
+    feature = np.empty((len(connectome_list), n_feat))
+    for i, cn in enumerate(connectome_list):
+        feature[i] = cn.flatten()
+
+    diff_2 = forward_diff_2(feature)
+    #feature[feature == 0] = np.inf
+    #percent_diff_2 = diff_2 / feature[1:-1]
+    return np.mean(np.abs(diff_2), axis=None)
+
+
 if __name__ == '__main__':
     get_lobe_idx()

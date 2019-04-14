@@ -5,7 +5,7 @@ from matplotlib.collections import PatchCollection
 import matplotlib.pyplot as plt
 from utils.readFile import readSubjectFiles
 import bct
-from utils.helper import get_lobe_idx, get_sorted_node_count, get_top_links, get_lobe_order, get_subject_names
+from utils.helper import get_lobe_idx, get_sorted_node_count, get_top_links, get_lobe_order, get_subject_names, forward_diff
 from utils.sortDetriuxNodes import sort_matrix
 from utils.CurvedText import CurvedText
 
@@ -26,6 +26,7 @@ def get_box_circle_patches(center, rad, arc_ratio, c_arc, width, window=(0, 360)
 
 def add_text(ax, patches, center):
     lobe_order = get_lobe_order(True)
+    plt.rc('font', family='Times New Roman')
     for i, p in enumerate(patches):
         r, theta1, theta2 = p.r, p.theta1 * np.pi/180, p.theta2 * np.pi/180
         x, y = r * 1.05 * np.cos((theta1 + theta2)/2) + center[0], \
@@ -34,19 +35,20 @@ def add_text(ax, patches, center):
         ax.text(x, y, lobe_order[i], rotation=(p.theta1 + p.theta2)/2 - 90, horizontalalignment='center',
                 verticalalignment='center', fontsize=25)
 
-def plot_ring(color_list, lobes):
+def plot_ring(color_list_face, color_list_edge, lobes):
     fig, ax = plt.subplots(figsize=(10, 10))
     patches = []
 
     # Some limiting conditions on Wedge
     center = (.5, .5)
     rad = 0.5
-    colors = []
+    colors_face = []
+    colors_edge = []
     lobes = np.array(lobes)
     lobe_gap = 2
     lobes_ratio = lobes / sum(lobes)
     text_coord_patch = []
-    for i, color in enumerate(color_list):
+    for i, color in enumerate(color_list_face):
         start = 0
         total = 360
         new_patches = []
@@ -63,22 +65,15 @@ def plot_ring(color_list, lobes):
 
         patches += new_patches
         rad = rad * 0.97
-        colors += list(color)
+        colors_face += list(color)
+        colors_edge += list(color_list_edge[i])
 
-    p = PatchCollection(patches, facecolors=colors, alpha=1)
+    p = PatchCollection(patches, facecolors=colors_face, edgecolors=colors_edge, alpha=1)
     ax.add_collection(p)
-    #add_text(ax, text_coord_patch, center)
+    add_text(ax, text_coord_patch, center)
     ax.set_axis_off()
 
     return new_patches
-
-def forward_diff(feature):
-    T, n = feature.shape
-    diff = np.empty((T - 1, n))
-    for i in range(0, T - 1):
-        diff[i, :] = feature[i + 1] - feature[i]
-
-    return diff
 
 def get_outlier_nodes(data, feat="deg", threshold=1e-3):
     T = len(data)
@@ -101,16 +96,22 @@ def get_outlier_nodes(data, feat="deg", threshold=1e-3):
 
 def get_ring_colors(data):
     outlier = get_outlier_nodes(data)
-    colors = []
+    face_colors = []
+    edge_colors = []
+
     for i in range(0, len(outlier)):
-        color = []
+        face_color = []
+        edge_color = []
         for j in range(0, len(outlier[i])):
             if outlier[i][j]:
-                color.append('#ff0000')
+                face_color.append('#ff0000')
+                edge_color.append('#ff0000')
             else:
-                color.append('#003366')
-        colors.append(color)
-    return colors
+                face_color.append('#ffffff')
+                edge_color.append('#003366')
+        face_colors.append(face_color)
+        edge_colors.append(edge_color)
+    return face_colors, edge_colors
 
 def get_edges(coord, links):
     edges = []
@@ -129,9 +130,9 @@ def plot_edges(edges):
                  color='#804000', linewidth=w*500, alpha=0.5)
 
 def plot_circle(data, edges, save=True, fname='circle_plot'):
-    color_list_rw = get_ring_colors(data)
+    color_list_face_rw, color_list_edge_rw = get_ring_colors(data)
     lobes_count = get_sorted_node_count()
-    inner_ring = plot_ring(color_list_rw, lobes_count)
+    inner_ring = plot_ring(color_list_face_rw, color_list_edge_rw, lobes_count)
     center = (.5, .5)
     coord = []
     for patch in inner_ring:
@@ -140,17 +141,17 @@ def plot_circle(data, edges, save=True, fname='circle_plot'):
         x, y = r * np.cos(theta) + center[0], r * np.sin(theta) + center[1]
         coord.append((x, y))
 
-    #edges = get_edges(coord, edges)
-    #plot_edges(edges)
+    edges = get_edges(coord, edges)
+    plot_edges(edges)
     if save:
         fig = plt.gcf()
         fig.tight_layout()
-        fig.savefig(fname + '.eps')
+        fig.savefig(fname + '.png')
     else:
         plt.show()
 
 def main(sub="027_S_5110"):
-    rw, sm = readSubjectFiles(sub, "whole")
+    rw, sm = readSubjectFiles(sub, "whole", sort=False)
 
     for t in range(0, len(rw)):
         rw[t], order = sort_matrix(rw[t], False)

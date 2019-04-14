@@ -28,11 +28,11 @@ def read_data(size=3, sel_label=["1", "2"]):
             continue
         else:
             if sub_info[sub][0]["DX"] == '1':
-                count = 2
+                count = 1
             elif sub_info[sub][0]["DX"] == '2':
                 count = 1
             elif sub_info[sub][0]["DX"] == '3':
-                count = 3
+                count = 1
 
         for c in range(count):
             X1.append(rw_all[c])
@@ -91,10 +91,10 @@ def plot_2d_data(X, y, fig):
     return fig
 
 
-def classification_on_global_features(X_train, X_test, y_train, y_test, prob=False):
+def classification_on_global_features(X_train, X_test, y_train, y_test):
     clf = svm.SVC(random_state=1, kernel='rbf', probability=True, decision_function_shape='ovr', gamma='auto')
     clf.fit(X_train, y_train)
-    print("Kernel fitted")
+    #print("Kernel fitted")
     pred = clf.predict_proba(X_test)
     y_pred = []
     for p in pred:
@@ -104,18 +104,28 @@ def classification_on_global_features(X_train, X_test, y_train, y_test, prob=Fal
             y_pred.append(1)
 
     y_pred = np.array(y_pred)
-    print("Confusion Matrix: \n", confusion_matrix(y_test, y_pred))
+    #print("Confusion Matrix: \n", confusion_matrix(y_test, y_pred))
     return y_pred, y_test, pred
 
 def classify(X, y, f=0.3, random_state=1):
     X_train, X_test, y_train, y_test = get_train_test(X, y, f=f, random_state=random_state)
-    X_train, y_train = smote(X_train, y_train)
-    return classification_on_global_features(X_train, X_test, y_train, y_test, prob)
+    #X_train, y_train = smote(X_train, y_train)
+    return classification_on_global_features(X_train, X_test, y_train, y_test)
 
+def count_data():
+    sub_info = get_subject_info(3)
+    n_scans = 0
+    for si in sub_info.keys():
+        n_scans = n_scans + len(sub_info[si])
+    print("total scans: ", n_scans)
 
 if __name__ == '__main__':
+    count_data()
+
     sel = [['1', '2'], ['1', '3'], ['2', '3']]
+    pred_list = []
     for sel_label in sel:
+        print("labels: ", sel_label)
         X_rw, X_sm, y = read_data(3, sel_label)
         X_rw_th = threshold_all(X_rw, Args.threshold, 1)
 
@@ -140,25 +150,25 @@ if __name__ == '__main__':
 
             y_pred, y_test, pred3 = classify(X_sm, y, random_state=iter)
             pred.append(pred3)
-            plot_roc(pred, y_test, title=["Raw", "Thresholded", "Intrinsic"], fname=sel_label[0]+"_"+sel_label[1])
+            plot_roc(pred, y_test, title=["Observed", "Thresholded", "Our method"], fname=sel_label[0]+"_"+sel_label[1])
             print("Smooth: ", accuracy_score(y_test, y_pred))
         else:
             for iter in range(20):
-                print("Iter: ", iter)
+                #print("Iter: ", iter)
                 y_pred, y_test, pred = classify(X_rw, y, random_state=iter)
                 rc = accuracy_score(y_test, y_pred)
                 rw_ac.append(rc)
-                print("rw: ", rc)
+                #print("rw: ", rc)
 
                 y_pred, y_test, pred = classify(X_rw_th, y, random_state=iter)
                 rc_th = accuracy_score(y_test, y_pred)
                 rw_th.append(rc_th)
-                print("rw_th: ", rc_th)
+                #print("rw_th: ", rc_th)
 
                 y_pred, y_test, pred = classify(X_sm, y, random_state=iter)
                 sm = accuracy_score(y_test, y_pred)
                 sm_ac.append(sm)
-                print("sm: ", sm)
+                #print("sm: ", sm)
 
             print("Mean raw: ", np.mean(rw_ac))
             print("Mean raw thr: ", np.mean(rw_th))

@@ -113,7 +113,7 @@ def initialize_connectomes(connectome_list):
 
         smoothed_connectomes.append(row_normalize(A))
 
-    return smoothed_connectomes, rt, n_mode_list, idx_list, K1, K2
+    return smoothed_connectomes
 
 
 def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw,
@@ -219,8 +219,8 @@ def optimize_longitudinal_connectomes(connectome_list, dfw, sw, lmw,
 if __name__ == "__main__":
     # Read data
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
-    sub_names = get_subject_names(4)
-    #sub_names = ["027_S_5110"]
+    #sub_names = get_subject_names(4)
+    sub_names = ["027_S_5110"]
     nr = []
     ns = []
     for sub in sub_names:

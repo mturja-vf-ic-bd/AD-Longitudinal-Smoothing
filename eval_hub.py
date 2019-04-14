@@ -21,9 +21,9 @@ def get_hub_match(cn_list, hub_count=6):
 
 
 def entropy_eval():
-
     sub_names = get_subject_names(3)
-    hub_count = 6
+    #sub_names = ["027_S_5110"]
+    hub_count = 10
     rw_en_list = []
     sm_en_list = []
     for sub in sub_names:
@@ -46,6 +46,34 @@ def entropy_eval():
         plt.show()
         '''
 
+        # Write node file
+        from utils.readFile import write_node_file
+        node_color_rw = []
+        node_color_sm = []
+        for h in rw_hub_match:
+            if h == 0:
+                node_color_rw.append('1')
+            else:
+                node_color_rw.append('2')
+
+        for h in sm_hub_match:
+            if h == 0:
+                node_color_sm.append('1')
+            else:
+                node_color_sm.append('2')
+
+        '''
+        # Write files
+        write_node_file(rw_hub_match, node_color_rw, sub + '_hub_rw' + '.node')
+        write_node_file(sm_hub_match, node_color_sm, sub + '_hub_sw' + '.node')
+        with open(sub + '_signal_rw.txt', 'w') as f:
+            for val in rw_hub_match:
+                f.write(str(val) + '\n')
+        with open(sub + '_signal_sm.txt', 'w') as f:
+            for val in sm_hub_match:
+                f.write(str(val) + '\n')
+        '''
+
     print("Mean rw: ", np.mean(rw_en),
           "\nMean sm: ", np.mean(sm_en))
 
@@ -58,8 +86,10 @@ if __name__ == '__main__':
     from matplotlib import pyplot as plt
     #entropy_eval()
 
+
     import pickle as pk
     with open('hub_eval.pkl', 'rb') as f:
         rw_en_list, sm_en_list = pk.load(f)
 
     print(stats.ttest_rel(rw_en_list, sm_en_list))
+
