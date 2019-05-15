@@ -383,7 +383,6 @@ def forward_diff_2(feature):
         diff[i - 1, :] = (feature[i + 1] + feature[i - 1] - 2 * feature[i])
     return diff
 
-    return diff
 def central_difference_of_links(connectome_list):
     n_feat = connectome_list[0].shape[0] * connectome_list[0].shape[1]
     feature = np.empty((len(connectome_list), n_feat))
@@ -394,6 +393,7 @@ def central_difference_of_links(connectome_list):
     #feature[feature == 0] = np.inf
     #percent_diff_2 = diff_2 / feature[1:-1]
     return np.mean(np.abs(diff_2), axis=None)
+
 
 
 if __name__ == '__main__':

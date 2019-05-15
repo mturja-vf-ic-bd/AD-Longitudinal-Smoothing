@@ -113,7 +113,6 @@ def get_subject_info(min_bound=-1):
 
 def write_file(subject, data, name, data_dir=None, suffix=None):
     """
-
     :param subject: name of the subject
     :param data: list of matrices
     :param name: name of the matrices
@@ -152,8 +151,6 @@ def write_node_file(node_size, color, out_file):
             f.write("%f %f %f %s %f %s\n" % (p["coord"][0], p["coord"][1],
                     p["coord"][2], color[i],
                     node_size[i]*5, p["name"]))
-
-
 
 
 if __name__ == '__main__':

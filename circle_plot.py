@@ -1,5 +1,6 @@
 import matplotlib
 import numpy as np
+from random import shuffle
 from matplotlib.patches import Circle, Wedge, Polygon
 from matplotlib.collections import PatchCollection
 import matplotlib.pyplot as plt
@@ -8,6 +9,7 @@ import bct
 from utils.helper import get_lobe_idx, get_sorted_node_count, get_top_links, get_lobe_order, get_subject_names, forward_diff
 from utils.sortDetriuxNodes import sort_matrix
 from utils.CurvedText import CurvedText
+from utils.color_util import *
 
 def get_box_circle_patches(center, rad, arc_ratio, c_arc, width, window=(0, 360)):
     patches = []
@@ -59,8 +61,8 @@ def plot_ring(color_list_face, color_list_edge, lobes):
             lobe_patch = get_box_circle_patches(center, rad, 0.8, lobe, 0.01,
                                                 window=(start, end))
             new_patches += lobe_patch
-            if i == 0:
-                text_coord_patch.append(lobe_patch[int(len(lobe_patch)/2) - 1])
+            # if i == 0:
+            #     text_coord_patch.append(lobe_patch[int(len(lobe_patch)/2) - 1])
             start = end + lobe_gap
 
         patches += new_patches
@@ -68,7 +70,7 @@ def plot_ring(color_list_face, color_list_edge, lobes):
         colors_face += list(color)
         colors_edge += list(color_list_edge[i])
 
-    p = PatchCollection(patches, facecolors=colors_face, edgecolors=colors_edge, alpha=1)
+    p = PatchCollection(patches, facecolors=colors_face, edgecolors=None, alpha=1)
     ax.add_collection(p)
     add_text(ax, text_coord_patch, center)
     ax.set_axis_off()
@@ -94,6 +96,30 @@ def get_outlier_nodes(data, feat="deg", threshold=1e-3):
     print(ind_vec.sum(axis=None))
     return ind_vec
 
+
+def mp_ring_colors(data):
+    T = len(data)
+    n = len(data[0])
+    gradient = get_color_gradient(n)
+    face_colors = []
+    edge_colors = []
+
+    for i in range(T):
+        face_color = []
+        edge_color = []
+        for j in range(n):
+            face_color.append(RGB_to_hex(gradient[j, :]))
+            edge_color.append(RGB_to_hex(gradient[j, :]))
+        if i == 0:
+            shuffle(face_color)
+            shuffle(edge_color)
+        face_colors.append(face_color)
+        edge_colors.append(edge_color)
+        gradient = diffuse_color(data[0], gradient)
+
+    return face_colors, edge_colors
+
+
 def get_ring_colors(data):
     outlier = get_outlier_nodes(data)
     face_colors = []
@@ -113,6 +139,17 @@ def get_ring_colors(data):
         edge_colors.append(edge_color)
     return face_colors, edge_colors
 
+
+def get_lobe_wise_color_ring(n_nodes=148):
+    lobes_count = get_sorted_node_count()
+    face_color = []
+    color_list = ['#ff0000', '#33F3FF', '#0000ff', '#008000', '#FF33F6', '#fffc33',
+                  '#fffc33', '#FF33F6', '#008000', '#0000ff', '#33F3FF', '#ff0000']
+    for i, lc in enumerate(lobes_count):
+        face_color = face_color + [color_list[i]] * lc
+
+    return [face_color], [face_color]
+
 def get_edges(coord, links):
     edges = []
     for link in links:
@@ -129,10 +166,9 @@ def plot_edges(edges):
         plt.plot([x1, x2], [y1, y2], marker='.', ls='-',
                  color='#804000', linewidth=w*500, alpha=0.5)
 
-def plot_circle(data, edges, save=True, fname='circle_plot'):
-    color_list_face_rw, color_list_edge_rw = get_ring_colors(data)
+def plot_circle(color_list_face, color_list_edge, edges, save=True, fname='circle_plot'):
     lobes_count = get_sorted_node_count()
-    inner_ring = plot_ring(color_list_face_rw, color_list_edge_rw, lobes_count)
+    inner_ring = plot_ring(color_list_face, color_list_edge, lobes_count)
     center = (.5, .5)
     coord = []
     for patch in inner_ring:
@@ -151,28 +187,20 @@ def plot_circle(data, edges, save=True, fname='circle_plot'):
         plt.show()
 
 def main(sub="027_S_5110"):
-    rw, sm = readSubjectFiles(sub, "whole", sort=False)
+    data, _ = readSubjectFiles(sub, "whole", sort=False)
 
-    for t in range(0, len(rw)):
-        rw[t], order = sort_matrix(rw[t], False)
-        sm[t], order = sort_matrix(sm[t], False)
+    for t in range(0, len(data)):
+        data[t], order = sort_matrix(data[t], False)
 
     # Plot Raw
-    rw_links = get_top_links(rw[1], count=500, offset=0, weight=True)
-    plot_circle(rw, rw_links, True, 'raw_cplot')
-
-    # Plot Intrinsic
-    sm_links = []
-    for rl in rw_links:
-        i, j, w = rl
-        sm_links.append((i, j, sm[1][i, j]))
-
-    plot_circle(sm, sm_links, True, 'sm_cplot')
+    rw_links = get_top_links(data[1], count=500, offset=0, weight=True)
+    #face_color, edge_color = mp_ring_colors(data)
+    face_color, edge_color = get_lobe_wise_color_ring(len(data[1]))
+    plot_circle(face_color, edge_color, rw_links, save=True, fname='demo_cplot')
 
 
 if __name__ == '__main__':
-    subname = get_subject_names(5)
-    subname =["094_S_4162"]
+    subname =["027_S_5110"]
     for sub in subname:
         print(sub)
         main(sub)

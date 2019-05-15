@@ -99,7 +99,6 @@ if __name__ == '__main__':
         smoothed_connectomes[t], s_i = sort_connectomes_by_modularity(smoothed_connectomes[t], s_i)
         smoothed_connectomes[t] = rescale_sm_mat_to_raw(connectomes[t], smoothed_connectomes[t])
 
-
     max_ind = get_top_links(connectomes[1], count=1, offset=0)
     test_result(sub, connectomes, smoothed_connectomes, max_ind, plot_all=True)
 
