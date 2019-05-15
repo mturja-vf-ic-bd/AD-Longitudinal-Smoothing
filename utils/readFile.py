@@ -4,6 +4,7 @@ import numpy as np
 from utils.helper import rescale_matrix, get_parcellation_table
 import time
 from args import Args
+import json
 from utils.sortDetriuxNodes import sort_matrix
 
 
@@ -152,6 +153,11 @@ def write_node_file(node_size, color, out_file):
                     p["coord"][2], color[i],
                     node_size[i]*5, p["name"]))
 
+def read_temporal_mapping():
+    with open(os.path.join(Args.other_file, 'temporal_mapping.json')) as f:
+        temap = json.load(f)
+
+    return temap
 
 if __name__ == '__main__':
     from args import Args

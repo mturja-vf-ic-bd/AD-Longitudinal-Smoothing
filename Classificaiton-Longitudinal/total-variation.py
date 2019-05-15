@@ -1,6 +1,5 @@
 from read_file import *
 import numpy as np
-from numpy import linalg as LA
 
 def process_data(data):
     F = []

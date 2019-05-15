@@ -26,5 +26,6 @@ class Args:
     data_directory = "/home/turja/AD-Data_Organized"
     raw_data_directory = "/home/turja/AD-Data"
     data_file = "/home/turja/DXData.csv"
+    other_file = "/home/mturja/AD_files"
 
 

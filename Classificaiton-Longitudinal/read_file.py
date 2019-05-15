@@ -1,7 +1,7 @@
 import numpy as np
 import json
 import os
-from args import Args
+from arg import Args
 
 def read_matrix_from_text_file(network_id, debug=False):
     file_path = os.path.join(Args.NETWORK_DIR, network_id + "_fdt_network_matrix")
