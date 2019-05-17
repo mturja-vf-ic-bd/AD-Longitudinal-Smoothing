@@ -22,10 +22,11 @@ class Args:
     r = 2
     intra_r = 0.7
     pro = 1
-    root_directory = "/home/turja/AD-Longitudinal-Smoothing"
-    data_directory = "/home/turja/AD-Data_Organized"
-    raw_data_directory = "/home/turja/AD-Data"
-    data_file = "/home/turja/DXData.csv"
+    root_directory = "/home/mturja/AD-Longitudinal-Smoothing"
+    data_directory = "/home/mturja/AD-Data_Organized"
+    raw_data_directory = "/home/mturja/AD-Data"
+    data_file = "/home/mturja/DXData.csv"
     other_file = "/home/mturja/AD_files"
+    base_dir = "/home/mturja"
 
 
