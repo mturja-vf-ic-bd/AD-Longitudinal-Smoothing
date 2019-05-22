@@ -1,8 +1,11 @@
+from typing import List
+
 import numpy as np
 import json
 import os
 from arg import Args
 import csv
+import warnings
 from sklearn.mixture import GaussianMixture
 
 def read_matrix_from_text_file(network_id, debug=False):
@@ -10,12 +13,17 @@ def read_matrix_from_text_file(network_id, debug=False):
     if debug:
         print("Reading File: " + file_path)
     a = []
-    fin = open(file_path, 'r')
-    for line in fin.readlines():
-        a.append([float(x) for x in line.split()])
+    try:
+        fin = open(file_path, 'r')
+        for line in fin.readlines():
+            a.append([float(x) for x in line.split()])
 
-    a = np.asarray(a)
-    return a
+        a = np.asarray(a)
+        return a
+    except FileNotFoundError:
+        if Args.DEBUG:
+            print("network not found for {}. Returning None".format(network_id))
+        return None
 
 
 def read_parcellation_table(network_id):
@@ -24,8 +32,13 @@ def read_parcellation_table(network_id):
     :param network_id: network id
     :return: parcellation table
     """
-    with open(os.path.join(Args.PARC_DIR, network_id + "_parcellationTable.json")) as pt:
-        table = json.load(pt)
+    try:
+        with open(os.path.join(Args.PARC_DIR, network_id + "_parcellationTable.json")) as pt:
+            table = json.load(pt)
+    except FileNotFoundError:
+        if Args.DEBUG:
+            print("parcellation table not found for {}. Returning None".format(network_id))
+        return None
     return table
 
 
@@ -35,18 +48,26 @@ def convert_to_feat_mat(parc):
     :param parc: parcellation table
     :return: feature matrix
     """
-    n_feat = 4
-    feat_mat = np.zeros((len(parc), n_feat))
+    if parc is None:
+        return None
+
+    feat_name = ("SurfArea", "GrayVol", "ThickAvg", "NumVert")
+    feat_mat = np.zeros((len(parc), len(feat_name)))
     for i, p in enumerate(parc):
-        feat_mat[i][0] = p["NumVert"]
-        feat_mat[i][1] = p["SurfArea"]
-        feat_mat[i][2] = p["GrayVol"]
-        feat_mat[i][3] = p["ThickAvg"]
+        if all(feat in p.keys() for feat in feat_name):
+            feat_mat[i][0] = p["SurfArea"]
+            feat_mat[i][1] = p["GrayVol"]
+            feat_mat[i][2] = p["ThickAvg"]
+            feat_mat[i][3] = p["NumVert"]
+        else:
+            if Args.DEBUG:
+                print("Parcellation table doesn't contain the required features")
+            return None
 
     return feat_mat
 
 
-def read_subject_data(subject_id):
+def read_subject_data(subject_id, data_type='all'):
     """
     Read all the temporal adjacency matrix and their node features
     :param subject_id: subject id
@@ -55,14 +76,36 @@ def read_subject_data(subject_id):
     with open(Args.SUB_TO_NET_MAP, 'r+') as s2n:
         s2n_map = json.load(s2n)
 
+    if subject_id not in s2n_map.keys():
+        if Args.DEBUG:
+            print("{} not found in temporal mapping".format(subject_id))
+        return
+
     network_arr = s2n_map[subject_id]
     adj_mat = []
     node_feat = []
     for network in network_arr:
-        adj_mat.append(read_matrix_from_text_file(network["network_id"]))
-        node_feat.append(convert_to_feat_mat(read_parcellation_table(network["network_id"])))
+        parc_table = read_parcellation_table(network["network_id"])
+        network_data = read_matrix_from_text_file(network["network_id"])
+        features = convert_to_feat_mat(parc_table)
+        if parc_table is None:
+            continue
+        elif network_data is None:
+            continue
+        elif features is None:
+            continue
+        else:
+            if Args.DEBUG:
+                print("All data found {}".format(network["network_id"]))
+            adj_mat.append(network_data)
+            node_feat.append(features)
 
-    return {"node_feature": node_feat, "adjacency_matrix": adj_mat}
+    if data_type == 'all':
+        return {"node_feature": node_feat, "adjacency_matrix": adj_mat}
+    elif data_type == 'network':
+        return adj_mat
+    else:
+        return node_feat
 
 
 def read_full_csv_file(col=[2, 3]):
@@ -94,27 +137,15 @@ def read_temporal_mapping():
 
     return temap
 
+def read_all_subjects(data_type='network'):
+    data_set = []
+    temp_map = read_temporal_mapping()
+    for subject in temp_map.keys():
+        data_set.append(read_subject_data(subject, data_type))
+
+    return data_set
+
 
 if __name__ == '__main__':
-    mix_model = GaussianMixture(n_components=2, verbose=3, init_params='random'
-                                , means_init=[np.mean(EMCI_MMSE, axis=0), np.mean(LMCI_MMSE, axis=0)])
-    X = np.concatenate((EMCI_MMSE, LMCI_MMSE))
-    labels = mix_model.fit_predict(X)
-    print(labels)
-    pred_EMCI = X[labels==1]
-    pred_LMCI = X[labels==0]
-    flip = False
-    if len(pred_EMCI) < len(pred_LMCI):
-        pred_EMCI, pred_LMCI = pred_LMCI, pred_EMCI
-        flip = True
-
-    print("Before: {}, After: {}".format(np.mean(EMCI_MMSE, axis=0), np.mean(pred_EMCI, axis=0)))
-    print("Before: {}, After: {}".format(np.mean(LMCI_MMSE, axis=0), np.mean(pred_LMCI, axis=0)))
-    print("Count Before: {}, Count After: {}".format(len(EMCI_MMSE), len(pred_EMCI)))
-    print("Count Before: {}, Count After: {}".format(len(LMCI_MMSE), len(pred_LMCI)))
-
-    if not flip:
-        pred_label_emci = labels[0:len(EMCI_MMSE)]
-    else:
-        pred_label_emci = labels[0:len(LMCI_MMSE)]
-    print("Change in EMCI: {}".format(pred_label_emci.sum()))
+    data_set = read_all_subjects('node')
+    print(len(data_set))
