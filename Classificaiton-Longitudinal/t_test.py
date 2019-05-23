@@ -97,7 +97,7 @@ class ttest:
         X = X - X.mean(axis=0)
         X = X / np.std(X, axis=0)
         label = np.array(label)
-        return X, label
+        return X, label, pairs
 
 
 if __name__ == '__main__':

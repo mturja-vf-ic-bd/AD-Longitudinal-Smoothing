@@ -5,12 +5,13 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from imblearn.over_sampling import SMOTE
+import pickle
 
 
 if __name__ == '__main__':
     data_set = get_baselines()
-    tt = ttest(data_set, group=["1", "3"])
-    X, y = tt.get_triplet_data(0.1)
+    tt = ttest(data_set, group=["2", "3"])
+    X, y, pairs = tt.get_triplet_data(0.1)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     group_ids = np.zeros(X_train.shape[1], dtype=np.int)
@@ -26,3 +27,9 @@ if __name__ == '__main__':
     y_pred = model.predict(X_test)
     print(accuracy_score(y_pred, y_test))
     print("y_pred: {}\ny_test: {}".format(y_pred, y_test))
+
+    with open('coeff_2_3.pkl', 'wb') as f:
+        pickle.dump(model.coef_, f)
+    with open('t_pairs_2_3.pkl', 'wb') as f:
+        pickle.dump(pairs, f)
+
