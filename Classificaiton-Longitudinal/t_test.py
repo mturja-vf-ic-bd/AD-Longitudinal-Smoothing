@@ -64,8 +64,7 @@ class ttest:
 
         return p_val
 
-    def find_discriminative_triplets(self, p_cut_off=0.05):
-        reg_names = np.array(get_region_names())
+    def find_discriminative_pairs(self, p_cut_off=0.05):
         p_val_edge = self.find_t_stat_edge() < p_cut_off
         p_val_node = self.find_t_stat_node() < p_cut_off
         print("Node selected: {}".format(p_val_node.sum()))
@@ -73,19 +72,39 @@ class ttest:
         for i in range(p_val_edge.shape[0]):
             for j in range(p_val_edge.shape[1]):
                 if p_val_edge[i][j] and p_val_node[i] and p_val_node[j] and i != j:
-                    reg_pair.append((reg_names[i], reg_names[j]))
+                    reg_pair.append((i, j))
 
-        print(reg_pair)
-        print(len(reg_pair))
+        print("Edge pair: ", reg_pair)
+        return reg_pair
+
+    def get_triplet_data(self, p_cut_off=0.05):
+        pairs = self.find_discriminative_pairs(p_cut_off)
+        X = []
+        label = []
+        for i in range(len(self.dx)):
+            network = self.network
+            row = []
+            feat = self.feature
+            for (x, y) in pairs:
+              row = row + [feat[i][x], feat[i][y], network[i][x, y]]
+            X.append(row)
+            if self.dx[i] == self.group[0]:
+                label.append(0)
+            else:
+                label.append(1)
+
+        X = np.array(X)
+        X = X - X.mean(axis=0)
+        X = X / np.std(X, axis=0)
+        label = np.array(label)
+        return X, label
 
 
 if __name__ == '__main__':
     data_set = get_baselines()
-    groups = [["1", "2"], ["2", "3"], ["1", "3"]]
-    count = 40
-
     tt = ttest(data_set, group=["1", "3"])
-    tt.find_discriminative_triplets(0.1)
+    X, y = tt.get_triplet_data(0.1)
+    print(X.shape, y.shape)
 
     # reg_names = np.array(get_region_names())
     # reg_list = []
