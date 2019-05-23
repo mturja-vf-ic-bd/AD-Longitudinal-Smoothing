@@ -1,6 +1,6 @@
 import os
 class Args:
-    DEBUG = True
+    DEBUG = False
     BASE_DIR = "/home/mturja"
     NETWORK_DIR = os.path.join(BASE_DIR, "AD_network")
     STAT_DIR = os.path.join(BASE_DIR, "AD_stats")

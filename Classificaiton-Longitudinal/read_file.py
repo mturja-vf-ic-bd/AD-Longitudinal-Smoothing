@@ -104,6 +104,7 @@ def read_subject_data(subject_id, data_type='all'):
 
     if data_type == 'all':
         return {"node_feature": node_feat, "adjacency_matrix": adj_mat, "dx_label": dx_label}
+
     elif data_type == 'network':
         return adj_mat
     else:
@@ -147,6 +148,7 @@ def read_all_subjects(data_type='all'):
 
     return data_set
 
+
 def get_baselines():
     data_set = read_all_subjects()
     network = []
@@ -164,6 +166,15 @@ def get_baselines():
     return {"node_feature": feature, "adjacency_matrix": network, "dx_label": dx_label}
 
 
+def get_region_names():
+    table = read_parcellation_table("S100790")
+    r_names = []
+    for i, elem in enumerate(table):
+        r_names.append(elem["name"])
+    return r_names
+
+
 if __name__ == '__main__':
-    data_set = get_baselines()
-    print(data_set)
+    #data_set = get_baselines()
+    #print(data_set)
+    print(get_region_names())
