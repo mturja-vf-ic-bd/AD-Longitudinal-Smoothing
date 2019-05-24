@@ -10,14 +10,14 @@ import pickle
 
 if __name__ == '__main__':
     data_set = get_baselines()
-    tt = ttest(data_set, group=["2", "3"])
-    X, y, pairs = tt.get_triplet_data(0.1)
+    group = ["1", "2"]
+    tt = ttest(data_set, group=group)
+    X, y, pairs = tt.get_triplet_data(0.2)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     group_ids = np.zeros(X_train.shape[1], dtype=np.int)
     for c in range(0, len(group_ids), 3):
         group_ids[c:c + 3] = c // 3
-
 
     sm = SMOTE(random_state=42)
     X_res, y_res = sm.fit_resample(X_train, y_train)
@@ -28,8 +28,9 @@ if __name__ == '__main__':
     print(accuracy_score(y_pred, y_test))
     print("y_pred: {}\ny_test: {}".format(y_pred, y_test))
 
-    with open('coeff_2_3.pkl', 'wb') as f:
+    with open('coeff_' + group[0] + '_' + group[1] + '.pkl', 'wb') as f:
         pickle.dump(model.coef_, f)
-    with open('t_pairs_2_3.pkl', 'wb') as f:
+    with open('t_pairs_' + group[0] + '_' + group[1] + '.pkl', 'wb') as f:
         pickle.dump(pairs, f)
+    print("Finished !!!")
 
