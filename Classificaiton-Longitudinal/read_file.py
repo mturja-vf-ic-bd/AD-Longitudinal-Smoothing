@@ -84,6 +84,7 @@ def read_subject_data(subject_id, data_type='all'):
     network_arr = s2n_map[subject_id]
     adj_mat = []
     node_feat = []
+    dx_label = []
     for network in network_arr:
         parc_table = read_parcellation_table(network["network_id"])
         network_data = read_matrix_from_text_file(network["network_id"])
@@ -99,9 +100,11 @@ def read_subject_data(subject_id, data_type='all'):
                 print("All data found {}".format(network["network_id"]))
             adj_mat.append(network_data)
             node_feat.append(features)
+            dx_label.append(network['dx_data'])
 
     if data_type == 'all':
-        return {"node_feature": node_feat, "adjacency_matrix": adj_mat}
+        return {"node_feature": node_feat, "adjacency_matrix": adj_mat, "dx_label": dx_label}
+
     elif data_type == 'network':
         return adj_mat
     else:
@@ -137,7 +140,7 @@ def read_temporal_mapping():
 
     return temap
 
-def read_all_subjects(data_type='network'):
+def read_all_subjects(data_type='all'):
     data_set = []
     temp_map = read_temporal_mapping()
     for subject in temp_map.keys():
@@ -146,6 +149,32 @@ def read_all_subjects(data_type='network'):
     return data_set
 
 
+def get_baselines():
+    data_set = read_all_subjects()
+    network = []
+    feature = []
+    dx_label = []
+
+    for item in data_set:
+        if not item["adjacency_matrix"]:
+            continue
+
+        network.append(item["adjacency_matrix"][0])
+        feature.append(item["node_feature"][0])
+        dx_label.append(item["dx_label"][0])
+
+    return {"node_feature": feature, "adjacency_matrix": network, "dx_label": dx_label}
+
+
+def get_region_names():
+    table = read_parcellation_table("S100790")
+    r_names = []
+    for i, elem in enumerate(table):
+        r_names.append(elem["name"])
+    return r_names
+
+
 if __name__ == '__main__':
-    data_set = read_all_subjects('node')
-    print(len(data_set))
+    #data_set = get_baselines()
+    #print(data_set)
+    print(get_region_names())
