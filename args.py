@@ -1,5 +1,5 @@
 import numpy as np
-
+import os
 
 class Args:
     n_eig = 0.005  # percent of eigen values to be zero
@@ -22,11 +22,11 @@ class Args:
     r = 2
     intra_r = 0.7
     pro = 1
-    root_directory = "/home/mturja/AD-Longitudinal-Smoothing"
-    data_directory = "/home/mturja/AD-Data_Organized"
-    raw_data_directory = "/home/mturja/AD-Data"
-    data_file = "/home/mturja/DXData.csv"
-    other_file = "/home/mturja/AD_files"
     base_dir = "/home/mturja"
+    root_directory = os.path.join(base_dir, "AD-Longitudinal-Smoothing")
+    data_directory = os.path.join(base_dir, "AD-Data_Organized")
+    raw_data_directory = os.path.join(base_dir, "AD-Data")
+    data_file = os.path.join(base_dir, "DXData.csv")
+    other_file = os.path.join(base_dir, "AD_files")
 
 

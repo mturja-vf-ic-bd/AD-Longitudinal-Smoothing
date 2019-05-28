@@ -159,6 +159,7 @@ def read_temporal_mapping():
 
     return temap
 
+
 if __name__ == '__main__':
     from args import Args
     import collections

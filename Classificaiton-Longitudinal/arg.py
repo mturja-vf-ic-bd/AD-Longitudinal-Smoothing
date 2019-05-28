@@ -6,4 +6,5 @@ class Args:
     STAT_DIR = os.path.join(BASE_DIR, "AD_stats")
     PARC_DIR = os.path.join(BASE_DIR, "AD_parc")
     OTHER_DIR = os.path.join(BASE_DIR, "AD_files")
-    SUB_TO_NET_MAP = "/home/mturja/AD_files/temporal_mapping.json"
+    SUB_TO_NET_MAP = os.path.join(BASE_DIR, "AD_files/temporal_mapping.json")
+    HOME_DIR = os.path.join(BASE_DIR, "AD-Longitudinal-Smoothing")

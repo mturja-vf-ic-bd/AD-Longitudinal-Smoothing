@@ -167,10 +167,11 @@ def get_baselines():
 
 
 def get_region_names():
-    table = read_parcellation_table("S100790")
     r_names = []
-    for i, elem in enumerate(table):
-        r_names.append(elem["name"])
+    with open(Args.HOME_DIR + '/parcellationTable_Ordered.json', 'r') as f:
+        table = json.load(f)
+        for i, elem in enumerate(table):
+            r_names.append(elem["name"])
     return r_names
 
 
