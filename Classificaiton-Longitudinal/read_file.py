@@ -149,7 +149,7 @@ def read_all_subjects(data_type='all'):
     return data_set
 
 
-def get_baselines():
+def get_baselines(normalize=False):
     data_set = read_all_subjects()
     network = []
     feature = []
@@ -159,7 +159,10 @@ def get_baselines():
         if not item["adjacency_matrix"]:
             continue
 
-        network.append(item["adjacency_matrix"][0])
+        net = item["adjacency_matrix"][0]
+        if normalize:
+            net /= net.sum(axis=1)[:, np.newaxis]
+        network.append(net)
         feature.append(item["node_feature"][0])
         dx_label.append(item["dx_label"][0])
 
@@ -167,10 +170,11 @@ def get_baselines():
 
 
 def get_region_names():
-    table = read_parcellation_table("S100790")
     r_names = []
-    for i, elem in enumerate(table):
-        r_names.append(elem["name"])
+    with open(Args.HOME_DIR + '/parcellationTable_Ordered.json', 'r') as f:
+        table = json.load(f)
+        for i, elem in enumerate(table):
+            r_names.append(elem["name"])
     return r_names
 
 

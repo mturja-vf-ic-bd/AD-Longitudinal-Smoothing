@@ -61,8 +61,8 @@ def plot_ring(color_list_face, color_list_edge, lobes):
             lobe_patch = get_box_circle_patches(center, rad, 0.8, lobe, 0.01,
                                                 window=(start, end))
             new_patches += lobe_patch
-            # if i == 0:
-            #     text_coord_patch.append(lobe_patch[int(len(lobe_patch)/2) - 1])
+            if i == 0:
+                text_coord_patch.append(lobe_patch[int(len(lobe_patch)/2) - 1])
             start = end + lobe_gap
 
         patches += new_patches
@@ -120,8 +120,7 @@ def mp_ring_colors(data):
     return face_colors, edge_colors
 
 
-def get_ring_colors(data):
-    outlier = get_outlier_nodes(data)
+def get_ring_colors(outlier):
     face_colors = []
     edge_colors = []
 
@@ -139,6 +138,9 @@ def get_ring_colors(data):
         edge_colors.append(edge_color)
     return face_colors, edge_colors
 
+def get_ring_colors_wrapper(data):
+    outlier = get_outlier_nodes(data)
+    return get_ring_colors(outlier)
 
 def get_lobe_wise_color_ring(n_nodes=148):
     lobes_count = get_sorted_node_count()
@@ -153,8 +155,12 @@ def get_lobe_wise_color_ring(n_nodes=148):
 def get_edges(coord, links):
     edges = []
     for link in links:
-        i, j, w = link
-        edges.append((coord[i], coord[j], w))
+        if len(link) == 3:
+            i, j, w = link
+            edges.append((coord[i], coord[j], w))
+        else:
+            i, j = link
+            edges.append((coord[i], coord[j], 0.005))
 
     return edges
 
@@ -196,7 +202,7 @@ def main(sub="027_S_5110"):
     rw_links = get_top_links(data[1], count=500, offset=0, weight=True)
     #face_color, edge_color = mp_ring_colors(data)
     face_color, edge_color = get_lobe_wise_color_ring(len(data[1]))
-    plot_circle(face_color, edge_color, rw_links, save=True, fname='demo_cplot')
+    plot_circle(face_color, edge_color, rw_links, save=False, fname='demo_cplot')
 
 
 if __name__ == '__main__':

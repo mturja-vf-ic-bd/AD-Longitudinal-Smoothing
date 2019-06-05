@@ -2,7 +2,7 @@ import json
 import numpy as np
 from args import Args
 
-def sort_matrix(matrix, circular=False):
+def sort_matrix(matrix=None, circular=False):
 	pt_name = Args.root_directory + "/utils/parcellationTable_Ordered.json" # parcellation table to edit VisuOrder
 
 	# Read parcellation table to edit VisuOrder
@@ -14,7 +14,10 @@ def sort_matrix(matrix, circular=False):
 	if not circular:
 		order[int(l/2):l] = np.flip(order[int(l/2):l])
 
-	sorted_matrix = matrix[order, :]
-	sorted_matrix = sorted_matrix[:, order]
-	return sorted_matrix, order
+	if matrix is None:
+		return order
+	else:
+		sorted_matrix = matrix[order, :]
+		sorted_matrix = sorted_matrix[:, order]
+		return sorted_matrix, order
 

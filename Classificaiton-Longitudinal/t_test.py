@@ -1,6 +1,8 @@
 from read_file import read_all_subjects, get_baselines, get_region_names
 import numpy as np
 from scipy.stats import ttest_ind
+import pickle
+from result_analysis import utils
 
 
 class ttest:
@@ -74,7 +76,6 @@ class ttest:
                 if p_val_edge[i][j] and p_val_node[i] and p_val_node[j] and i != j:
                     reg_pair.append((i, j))
 
-        print("Edge pair: ", reg_pair)
         return reg_pair
 
     def get_triplet_data(self, p_cut_off=0.05):
@@ -102,19 +103,19 @@ class ttest:
 
 if __name__ == '__main__':
     data_set = get_baselines()
-    tt = ttest(data_set, group=["1", "3"])
-    X, y = tt.get_triplet_data(0.1)
-    print(X.shape, y.shape)
+    groups = [["1", "2"], ["1", "3"], ["2", "3"]]
+    reg_names = np.array(get_region_names())
+    reg_list = []
+    lasso_edges= get_lasso_edge_set(groups)
+    for i, group in enumerate(groups):
+        tt = ttest(data_set, group=group)
+        reg = tt.find_discriminative_pairs(0.008)
+        file_p = 't_pairs_' + group[0] + '_' + group[1] + '.pkl'
 
-    # reg_names = np.array(get_region_names())
-    # reg_list = []
-    # for group in groups:
-    #     tt = ttest(data_set, group=group)
-    #     p_val = abs(tt.find_t_stat_node())
-    #     ind = np.argsort(p_val)
-    #     reg = set(reg_names[ind[:count]])
-    #     reg_list.append(reg)
-    #
+        common = set(reg).intersection(set(lasso_edges[i]))
+        print("t-pairs: ", len(reg))
+        print("lasso: ", len(lasso_edges[i]))
+        print("t and lasso: ", len(common))
     # for i in range(len(reg_list) - 1):
     #     intersect = reg_list[i].intersection(reg_list[i + 1])
     #     print("Intersection between {} and {}:\n{}".format(i, i + 1, intersect))
