@@ -3,6 +3,7 @@ import numpy as np
 from scipy.stats import ttest_ind
 import pickle
 from result_analysis import utils
+from sklearn import preprocessing
 
 
 class ttest:
@@ -78,6 +79,16 @@ class ttest:
 
         return reg_pair
 
+    def find_discriminative_links(self, p_cut_off=0.05):
+        p_val_edge = self.find_t_stat_edge() < p_cut_off
+        link_pair = []
+        for i in range(p_val_edge.shape[0]):
+            for j in range(p_val_edge.shape[1]):
+                if p_val_edge[i][j] and i != j:
+                    link_pair.append((i, j))
+
+        return link_pair
+
     def get_triplet_data(self, p_cut_off=0.05):
         pairs = self.find_discriminative_pairs(p_cut_off)
         X = []
@@ -99,6 +110,28 @@ class ttest:
         X = X / np.std(X, axis=0)
         label = np.array(label)
         return X, label, pairs
+
+    def get_link_data(self, p_cut_off=0.05, pairs=None):
+        if pairs is None:
+            pairs = self.find_discriminative_links(p_cut_off)
+        X = []
+        label = []
+        for i in range(len(self.dx)):
+            network = self.network
+            row = []
+            for (x, y) in pairs:
+                row.append(network[i][x, y])
+            X.append(row)
+            if self.dx[i] == self.group[0]:
+                label.append(0)
+            else:
+                label.append(1)
+
+        X = np.array(X)
+        X = preprocessing.robust_scale(X)
+        label = np.array(label)
+        return X, label, pairs
+
 
 
 if __name__ == '__main__':
