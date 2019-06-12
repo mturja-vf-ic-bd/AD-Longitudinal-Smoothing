@@ -8,9 +8,9 @@ import csv
 import warnings
 from sklearn.mixture import GaussianMixture
 
-def read_matrix_from_text_file(network_id, debug=False):
-    file_path = os.path.join(Args.NETWORK_DIR, network_id + "_fdt_network_matrix")
-    if debug:
+def read_matrix_from_text_file(network_id, net_dir = Args.NETWORK_DIR):
+    file_path = os.path.join(net_dir, network_id + "_fdt_network_matrix")
+    if Args.DEBUG:
         print("Reading File: " + file_path)
     a = []
     try:
@@ -67,7 +67,7 @@ def convert_to_feat_mat(parc):
     return feat_mat
 
 
-def read_subject_data(subject_id, data_type='all'):
+def read_subject_data(subject_id, data_type='all', net_dir = Args.NETWORK_DIR, label=None):
     """
     Read all the temporal adjacency matrix and their node features
     :param subject_id: subject id
@@ -87,7 +87,7 @@ def read_subject_data(subject_id, data_type='all'):
     dx_label = []
     for network in network_arr:
         parc_table = read_parcellation_table(network["network_id"])
-        network_data = read_matrix_from_text_file(network["network_id"])
+        network_data = read_matrix_from_text_file(network["network_id"], net_dir)
         features = convert_to_feat_mat(parc_table)
         if parc_table is None:
             continue
@@ -103,7 +103,7 @@ def read_subject_data(subject_id, data_type='all'):
             dx_label.append(network['dx_data'])
 
     if data_type == 'all':
-        return {"node_feature": node_feat, "adjacency_matrix": adj_mat, "dx_label": dx_label}
+        return {"subject": subject_id, "node_feature": node_feat, "adjacency_matrix": adj_mat, "dx_label": dx_label}
 
     elif data_type == 'network':
         return adj_mat
@@ -140,17 +140,17 @@ def read_temporal_mapping():
 
     return temap
 
-def read_all_subjects(data_type='all'):
+def read_all_subjects(data_type='all', net_dir=Args.NETWORK_DIR, label=None):
     data_set = []
     temp_map = read_temporal_mapping()
     for subject in temp_map.keys():
-        data_set.append(read_subject_data(subject, data_type))
+        data_set.append(read_subject_data(subject, data_type, net_dir, label))
 
     return data_set
 
 
-def get_baselines(normalize=False):
-    data_set = read_all_subjects()
+def get_baselines(normalize=False, net_dir=Args.NETWORK_DIR, label=None):
+    data_set = read_all_subjects(net_dir=net_dir)
     network = []
     feature = []
     dx_label = []
@@ -164,7 +164,10 @@ def get_baselines(normalize=False):
             net /= net.sum(axis=1)[:, np.newaxis]
         network.append(net)
         feature.append(item["node_feature"][0])
-        dx_label.append(item["dx_label"][0])
+        if label is None:
+            dx_label.append(item["dx_label"][0])
+        else:
+            dx_label.append(label[item["subject"]])
 
     return {"node_feature": feature, "adjacency_matrix": network, "dx_label": dx_label}
 
@@ -178,7 +181,44 @@ def get_region_names():
     return r_names
 
 
+def read_csv(fields):
+    fname = os.path.join(Args.OTHER_DIR, 'data.csv')
+    data = []
+    with open(fname, 'r') as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        line_count = 0
+        for row in csv_reader:
+            if line_count == 0:
+                header = row
+                projection = [header.index(field) for field in fields]
+                print(projection)
+            else:
+                temp = []
+                for ind in  projection:
+                    temp.append(row[ind])
+                data.append(temp)
+            line_count = line_count + 1
+    return np.array(data)
+
+
+from helpers import *
+def get_strat_label():
+    header = ['subject', 'PTID', 'DX_bl', 'AGE', 'PTGENDER']
+    data = read_csv(header)
+    y_strat = stratified_sampling_label(data, header)
+    return y_strat
+
+
 if __name__ == '__main__':
-    #data_set = get_baselines()
-    #print(data_set)
-    print(get_region_names())
+    # data_set = get_baselines()
+    # print(data_set)
+    # print(get_region_names())
+    # y = np.array([[1,3,2], [2,0,1], [1,1,1]])
+    # z = get_Kfold_multilabel(y)
+    # print(z)
+    header = ['subject', 'PTID', 'DX_bl', 'AGE', 'PTGENDER']
+    data = read_csv(header)
+    df = categorize_data(data, header)
+    y_strat = stratified_sampling_label(data, header)
+    print(len(y_strat), len(set(y_strat)))
+
