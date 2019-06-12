@@ -1,6 +1,6 @@
 # Modularity Analysis of the raw and smooth connectomes
 # The goal is to show that our method produce connectomes that has consistent modularity along time
-from bct import community_louvain
+#from bct import community_louvain
 import numpy as np
 from utils.readFile import readSubjectFiles
 from plot_functions import plot_matrix_all, plot_community_structure_variation

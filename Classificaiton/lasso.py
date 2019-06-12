@@ -59,7 +59,7 @@ if __name__ == '__main__':
         # for c in range(0, len(group_ids), 3):
         #     group_ids[c:c + 3] = c // 3
         # group_ids = np.array([i for i in range(0, X_train.shape[1])])
-        # model = GroupLassoClassifier(group_ids=group_ids, random_state=42, verbose=False, alpha=1e-1, max_iter=2000)
+        model = GroupLassoClassifier(group_ids=group_ids, random_state=42, verbose=False, alpha=1e-1, max_iter=2000)
         # model.fit(X_res, y_res)
         # print(len(model.coef_[np.nonzero(model.coef_)]) // 3)
         model = LogisticRegression(penalty='l1', solver='saga', tol=0.01)

@@ -291,8 +291,8 @@ def write_low_range_connectivity(hist_rw, hist_sm):
 
 if __name__ == '__main__':
     #eval_low_range_consistency()
-    #measure_change()
-    main_sim_net()
+    measure_change()
+    #main_sim_net()
     # psnr_all()
     # sub = "027_S_5110"
     # rw, sm = readSubjectFiles(sub, "row")

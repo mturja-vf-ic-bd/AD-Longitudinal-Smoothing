@@ -4,7 +4,7 @@ import json
 import numpy as np
 import copy
 import os
-from bct import *
+#from bct import *
 import sys
 
 
