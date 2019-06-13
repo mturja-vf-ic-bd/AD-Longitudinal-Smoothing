@@ -9,6 +9,8 @@ from ADNI_loader import get_adni_loader
 from model import LogisticRegression
 
 def train(train_dataset):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('Using device:', device)
     train_loader = get_adni_loader(train_dataset, batch_size)
     model = LogisticRegression(input_size, num_classes)
 
@@ -36,8 +38,25 @@ def train(train_dataset):
             if (i + 1) % 100 == 0:
                 print('Epoch: [%d/%d], Step: [%d/%d], Loss: %.4f'
                       % (epoch + 1, num_epochs, i + 1, len(train_dataset) // batch_size, loss.data[0]))
+        return model
 
 
+def test(model, test_dataset):
+    test_loader = get_adni_loader(test_dataset, batch_size)
+    # Test the Model
+    correct = 0
+    total = 0
+    for i, batch in enumerate(test_loader):
+        nets = batch["network"]
+        labels = batch["label"]
+        nets = Variable(nets.view(-1, input_size))
+        labels = Variable(labels)
+        outputs = model(nets)
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum()
+
+    print('Accuracy of the model %d %%' % (100 * correct / total))
 
 
 if __name__ == '__main__':
@@ -54,10 +73,11 @@ if __name__ == '__main__':
     input_size = shape_net[0] * shape_net[1]
     num_classes = len(np.unique(data_set["dx_label"]))
     print(num_classes)
-    num_epochs = 5
-    batch_size = 10
+    num_epochs = 500
+    batch_size = 40
     learning_rate = 0.001
 
     for train_fold, test_fold in folds:
-        train(train_fold)
+        model = train(train_fold)
+        test(model, test_fold)
 
