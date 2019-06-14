@@ -6,8 +6,8 @@ class adni_loader(Dataset):
     """ADNI data loader"""
 
     def __init__(self, dataset):
-        self.network = torch.from_numpy(np.array(dataset["adjacency_matrix"]), _dtype=torch.float64)
-        self.label = torch.from_numpy(np.array(dataset["dx_label"]), _dtype=torch.int)
+        self.network = torch.from_numpy(np.array(dataset["adjacency_matrix"])).float()
+        self.label = torch.from_numpy(np.array(dataset["dx_label"]))
 
     def __len__(self):
         return len(self.label)

@@ -161,7 +161,8 @@ def get_baselines(normalize=False, net_dir=Args.NETWORK_DIR, label=None):
 
         net = item["adjacency_matrix"][0]
         if normalize:
-            net /= net.sum(axis=1)[:, np.newaxis]
+            net = (net < 0.01) * net
+            net /= net.sum()
         network.append(net)
         feature.append(item["node_feature"][0])
         if label is None:

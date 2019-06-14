@@ -17,7 +17,7 @@ def get_Kfold_multilabel(y):
     return hash_map
 
 def categorize_data(data, headers):
-    dx_map = {'CN': '0', 'SMC': '0', 'EMCI': '1', 'LMCI': '2', 'AD': '3'}
+    dx_map = {'CN': '0', 'SMC': '0', 'EMCI': '1', 'LMCI': '1', 'AD': '2'}
     sex_map = {'Female': 1, 'Male': 1}
     df = pd.DataFrame(data, columns=headers)
     df.AGE = pd.to_numeric(df.AGE)
@@ -70,6 +70,10 @@ def get_train_test_fold(dataset, ratio=0.2):
         train_fold.append(data_set_train)
 
     return list(zip(train_fold, test_fold))
+
+
+def normalize(A):
+    return A / A.sum()
 
 #
 # def process_data(dataset):
