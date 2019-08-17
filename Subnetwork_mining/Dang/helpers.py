@@ -3,7 +3,6 @@ import numpy as np
 from read_file import read_temporal_mapping
 from sklearn.model_selection import StratifiedKFold
 from operator import itemgetter
-import torch
 
 
 def get_Kfold_multilabel(y):
@@ -74,6 +73,11 @@ def get_train_test_fold(dataset, ratio=0.2):
 
 def normalize(A):
     return A / A.sum()
+
+import torch
+def convert_to_triu(param, n):
+    out = torch.zeros(n, n)
+    ind = out.triu()
 
 #
 # def process_data(dataset):

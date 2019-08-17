@@ -1,5 +1,3 @@
-from typing import List
-
 import numpy as np
 import json
 import os
@@ -161,6 +159,7 @@ def get_baselines(normalize=False, net_dir=Args.NETWORK_DIR, label=None):
 
         net = item["adjacency_matrix"][0]
         if normalize:
+            net = (net.T + net) / 2
             net = (net < 0.01) * net
             net /= net.sum()
         network.append(net)
