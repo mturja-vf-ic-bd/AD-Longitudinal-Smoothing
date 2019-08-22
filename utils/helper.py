@@ -299,14 +299,16 @@ def threshold_all(connectome_list, vmin=0, vmax=1):
     connectome_list_th = [threshold(connectome_list[t], vmin, vmax) for t in range(len(connectome_list))]
     return connectome_list_th
 
-def threshold_percentile(connectome, p=50):
-    th_val = math.floor(np.percentile(connectome, p))
+def threshold_percentile(connectome, p1=50, p2=100):
+    th_val_low = math.floor(np.percentile(connectome, p1))
+    th_val_high = math.floor(np.percentile(connectome, p2))
     connectome_th = copy.deepcopy(connectome)
-    connectome_th[connectome_th < th_val] = 0
+    connectome_th[connectome_th < th_val_low] = 0
+    connectome_th[connectome_th > th_val_high] = 0
     return connectome_th
 
-def threshold_percentile_all(connectome_list, p=50):
-    connectome_list_th = [threshold_percentile(connectome_list[t], p) for t in range(len(connectome_list))]
+def threshold_percentile_all(connectome_list, p1=50, p2=100):
+    connectome_list_th = [threshold_percentile(connectome_list[t], p1, p2) for t in range(len(connectome_list))]
     return connectome_list_th
 
 def connectome_median(connectome_list):
