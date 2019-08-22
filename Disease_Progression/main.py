@@ -1,7 +1,7 @@
 import os
 import utils.readFile
 from args import Args
-from Disease_Progression.helper import degree_distribution
+from Disease_Progression.helper import degree_distribution, degree_distribution_weighted
 from Disease_Progression.plot_helper import plot_dist
 from Disease_Progression.networkx_interface import convert_to_netx_list
 from matplotlib import pyplot as plt
@@ -17,12 +17,14 @@ if __name__ == '__main__':
     ns = []
     for sub in sub_names:
         connectome_list = utils.readFile.readMatricesFromDirectory(os.path.join(Args.data_directory, sub), normalize=False)
-        connectome_list = threshold_percentile_all(connectome_list, 95)
-        connectome_list = convert_to_netx_list(connectome_list)
+        connectome_list = threshold_percentile_all(connectome_list, 75, 100)
+        # connectome_list = convert_to_netx_list(connectome_list)
 
         for g in connectome_list:
-            deg, cnt = degree_distribution(g)
-            plot_dist(np.log(deg), cnt, title=sub)
-            plt.show()
+            # deg, cnt = degree_distribution(g)
+            # plot_dist(np.log(deg), cnt, title=sub)
+            hist, bin_edges = degree_distribution_weighted(g)
+            plot_dist(bin_edges, hist, title=sub, xlabel="degree", ylabel="count")
+        plt.show()
         # f_diff = forward_diff(connectome_list)
 

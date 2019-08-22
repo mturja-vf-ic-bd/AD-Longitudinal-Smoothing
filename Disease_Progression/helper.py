@@ -16,3 +16,8 @@ def degree_distribution(g):
     degreeCount = collections.Counter(degree_sequence)
     deg, cnt = zip(*degreeCount.items())
     return deg, cnt
+
+def degree_distribution_weighted(A):
+    deg = A.sum(axis=1)
+    hist, bin_edges = np.histogram(deg, density=False, bins=50)
+    return hist, bin_edges[1:]
