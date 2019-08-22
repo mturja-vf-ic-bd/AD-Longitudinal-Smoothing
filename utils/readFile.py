@@ -6,6 +6,7 @@ import time
 from args import Args
 import json
 from utils.sortDetriuxNodes import sort_matrix
+import networkx as nx
 
 
 def readMatrixFromTextFile(fname, debug=False):
@@ -20,7 +21,7 @@ def readMatrixFromTextFile(fname, debug=False):
     return a
 
 
-def readMatricesFromDirectory(directory, normalize=True, method="row"):
+def readMatricesFromDirectory(directory, normalize=True, method="row", netx=False):
     files = [f for f in os.listdir(directory)]
     files.sort()
     mat_list = []
@@ -32,6 +33,8 @@ def readMatricesFromDirectory(directory, normalize=True, method="row"):
             a = readMatrixFromTextFile(join(directory, file))
             if normalize:
                 a = normalize_matrix(a, method)
+            if netx:
+                a = nx.from_numpy_array(a)
             mat_list.append(a)
         elif Args.debug:
             print(file, " is weird")

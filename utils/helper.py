@@ -6,6 +6,7 @@ import copy
 import os
 #from bct import *
 import sys
+import math
 
 
 def get_size(obj, seen=None):
@@ -298,6 +299,15 @@ def threshold_all(connectome_list, vmin=0, vmax=1):
     connectome_list_th = [threshold(connectome_list[t], vmin, vmax) for t in range(len(connectome_list))]
     return connectome_list_th
 
+def threshold_percentile(connectome, p=50):
+    th_val = math.floor(np.percentile(connectome, p))
+    connectome_th = copy.deepcopy(connectome)
+    connectome_th[connectome_th < th_val] = 0
+    return connectome_th
+
+def threshold_percentile_all(connectome_list, p=50):
+    connectome_list_th = [threshold_percentile(connectome_list[t], p) for t in range(len(connectome_list))]
+    return connectome_list_th
 
 def connectome_median(connectome_list):
     assert len(connectome_list) > 0, "Empty connectome list"
