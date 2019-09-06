@@ -67,6 +67,21 @@ class WGATConv(GATConv):
         return self.propagate(edge_index, size=size, x=x, edge_weight=edge_weight)
 
     def message(self, edge_index_i, size_i, x_i, x_j, edge_weight):
-        print(edge_index_i.shape, x_i.shape, x_j.shape, edge_weight.shape)
+        # Compute attention coefficients.
+        x_j = x_j * edge_weight
+        x_j = x_j.view(-1, self.heads, self.out_channels)
+        if x_i is None:
+            alpha = (x_j * self.att[:, :, self.out_channels:]).sum(dim=-1)
+        else:
+            x_i = x_i.view(-1, self.heads, self.out_channels)
+            alpha = (torch.cat([x_i, x_j], dim=-1) * self.att).sum(dim=-1)
+
+        alpha = F.leaky_relu(alpha, self.negative_slope)
+        alpha = softmax(alpha, edge_index_i, size_i)
+
+        # Sample attention coefficients stochastically.
+        alpha = F.dropout(alpha, p=self.dropout, training=self.training)
+
+        return x_j * alpha.view(-1, self.heads, 1)
 
 
