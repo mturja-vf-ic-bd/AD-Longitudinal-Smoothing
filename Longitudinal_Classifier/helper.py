@@ -6,7 +6,9 @@ from torch_geometric.nn import TopKPooling
 def convert_to_geom(node_feat, adj_mat, label):
     edge_ind = np.where(adj_mat > 0)
     edge_ind = torch.tensor([edge_ind[0], edge_ind[1]], dtype=torch.long)
+    # adj_mat = adj_mat + np.eye(len(adj_mat))
     edge_attr = torch.FloatTensor(adj_mat[adj_mat > 0]).unsqueeze(1)
+    # edge_attr = torch.FloatTensor(adj_mat)
     x = torch.FloatTensor(node_feat).unsqueeze(1)
     g = Data(x=x, edge_index=edge_ind, edge_attr=edge_attr, y=label)
     return g

@@ -53,7 +53,7 @@ class WGATConv(GATConv):
     def forward(self, x, edge_index, edge_weight=None, size=None):
         if size is None and torch.is_tensor(x):
             edge_index, _ = remove_self_loops(edge_index)
-            edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+            # edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
 
         if edge_weight is None:
             edge_weight = torch.ones((edge_index.size(1),),
@@ -64,9 +64,9 @@ class WGATConv(GATConv):
             x = (None if x[0] is None else torch.matmul(x[0], self.weight),
                  None if x[1] is None else torch.matmul(x[1], self.weight))
 
-        return self.propagate(edge_index, size=size, x=x)
+        return self.propagate(edge_index, size=size, x=x, edge_weight=edge_weight)
 
-    def message(self, edge_index_i, size_i, x_i, x_j):
-        print("In WGAT: {}, {}, {}, {}, {}".format(edge_index_i.shape, edge_weight_i.shape, x_i.shape, x_j.shape))
+    def message(self, edge_index_i, size_i, x_i, x_j, edge_weight):
+        print(edge_index_i.shape, x_i.shape, x_j.shape, edge_weight.shape)
 
 

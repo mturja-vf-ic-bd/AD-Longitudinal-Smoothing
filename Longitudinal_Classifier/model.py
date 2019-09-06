@@ -56,6 +56,6 @@ class ConvPool(nn.Module):
 
     def forward(self, g):
         g = self.conv.forward(g.x, g.edge_index, g.edge_attr)
-        x, edge_index, _, _, _ = self.pool(g)
-        g = Data(x=x, edge_index=edge_index)
+        x, edge_index, edge_attr, _, _ = self.pool(g)
+        g = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
         return g
