@@ -1,7 +1,7 @@
 import os
 class Args:
     DEBUG = False
-    BASE_DIR = "/home/turja"
+    BASE_DIR = "/home/mturja"
     NETWORK_DIR = os.path.join(BASE_DIR, "AD_network")
     NETWORK_DIR_SM = os.path.join(BASE_DIR, "AD_network_sm")
     STAT_DIR = os.path.join(BASE_DIR, "AD_stats")
