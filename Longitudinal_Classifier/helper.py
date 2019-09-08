@@ -3,7 +3,12 @@ from torch_geometric.data import Data
 from Longitudinal_Classifier.read_file import *
 from torch_geometric.nn import TopKPooling
 
-def convert_to_geom(node_feat, adj_mat, label):
+def convert_to_geom(node_feat, adj_mat, label, normalize=False):
+    if normalize:
+        adj_mat = adj_mat + adj_mat.T
+        deg = adj_mat.sum(axis=1) ** (-0.5)
+        deg_norm = np.outer(deg, deg)
+        adj_mat = deg_norm * adj_mat
     edge_ind = np.where(adj_mat > 0)
     edge_ind = torch.tensor([edge_ind[0], edge_ind[1]], dtype=torch.long)
     # adj_mat = adj_mat + np.eye(len(adj_mat))
@@ -16,7 +21,7 @@ def convert_to_geom(node_feat, adj_mat, label):
 def convert_to_geom_all(node_feat, adj_mat, label):
     G = []
     for i in range(0, len(adj_mat)):
-        G.append(convert_to_geom(node_feat[i], adj_mat[i], label[i]))
+        G.append(convert_to_geom(node_feat[i], adj_mat[i], label[i], True))
     return G
 
 

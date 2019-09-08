@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from Longitudinal_Classifier.layer import GraphAttentionLayer, WGATConv
-from torch_geometric.data import Data
+from Longitudinal_Classifier.layer import GraphAttentionLayer, GATConvPool
+import numpy as np
+import math
 
 
 class GAT(nn.Module):
@@ -46,16 +47,35 @@ class LongGAT(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-from torch_geometric.nn import GATConv, TopKPooling
+class LongGNN(nn.Module):
+    def __init__(self, in_feat=[1, 3], n_nodes=148, dropout=0.5, concat=False, alpha=0.2, n_heads=3, n_layer=1, n_class=1, pooling_ratio=0.5):
+        super(LongGNN, self).__init__()
+        self.n_nodes = n_nodes
+        self.n_class = n_class
+        self.layer = [GATConvPool(in_feat=in_feat[i], out_feat=in_feat[i+1],
+                                  dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads, pooling_ratio=pooling_ratio) for i in range(n_layer)]
+        for i, l in enumerate(self.layer):
+            self.add_module('GATConvPool_{}'.format(i), l)
+        reduced_node_size = n_nodes
+        for i in range(n_layer):
+            reduced_node_size = math.ceil(reduced_node_size * pooling_ratio)
 
-class ConvPool(nn.Module):
-    def __init__(self, in_feat, out_feat, n_heads, dropout, alpha, pool_ratio=0.5):
-        super(ConvPool, self).__init__()
-        self.conv = WGATConv(in_feat, out_feat, concat=False, heads=n_heads, dropout=dropout, negative_slope=alpha)
-        self.pool = TopKPooling(in_feat, ratio=pool_ratio)
+        self.out_dim = n_class if n_class > 2 else 1
+        self.linear = nn.Sequential(nn.Linear(reduced_node_size * in_feat[-1], self.out_dim),
+                                    nn.Softmax())
 
-    def forward(self, g):
-        g = self.conv.forward(g.x, g.edge_index, g.edge_attr)
-        x, edge_index, edge_attr, _, _ = self.pool(g)
-        g = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
-        return g
+    def forward(self, G_in):
+        # G is a list of graph data
+        G_out = []
+        for g in G_in:
+            for l in self.layer:
+                g = l(g)
+            G_out.append(g)
+
+        out_feat = torch.max(torch.stack([g.x for g in G_out]), 0)[0]
+        out_feat = self.linear(out_feat.view(-1, 1).squeeze())
+        # for i, g in enumerate(G_out):
+        #     if i != 0:
+        #         out_feat = torch.stack((out_feat, g.x))
+
+        return out_feat

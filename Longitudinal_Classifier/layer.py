@@ -2,8 +2,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GATConv
 from torch_geometric.utils import remove_self_loops, add_self_loops, softmax
+from torch_geometric.nn import GATConv, TopKPooling
+from torch_geometric.data import Data
 
 
 class GraphAttentionLayer(nn.Module):
@@ -45,7 +46,7 @@ class GraphAttentionLayer(nn.Module):
 
 
 class WGATConv(GATConv):
-    def __init__(self, in_channels, out_channels, heads=1, concat=True,
+    def __init__(self, in_channels, out_channels, heads=1, concat=False,
                  negative_slope=0.2, dropout=0, bias=True, **kwargs):
         super(WGATConv, self).__init__(in_channels, out_channels, heads, concat,
                  negative_slope, dropout, bias, **kwargs)
@@ -84,4 +85,26 @@ class WGATConv(GATConv):
 
         return x_j * alpha.view(-1, self.heads, 1)
 
+    def update(self, aggr_out):
+        if self.concat is True:
+            aggr_out = aggr_out.view(-1, self.heads * self.out_channels)
+        else:
+            aggr_out = aggr_out.mean(dim=1)
 
+        if self.bias is not None:
+            aggr_out = aggr_out + self.bias
+        return aggr_out
+
+
+class GATConvPool(nn.Module):
+    def __init__(self, in_feat, out_feat, n_heads, dropout, alpha, concat, pooling_ratio=0.5):
+        super(GATConvPool, self).__init__()
+        self.conv = WGATConv(in_feat, out_feat, concat=concat, heads=n_heads,
+                             dropout=dropout, negative_slope=alpha)
+        self.pool = TopKPooling(in_feat, ratio=pooling_ratio)
+
+    def forward(self, g):
+        x = self.conv(g.x, g.edge_index, g.edge_attr)
+        x, edge_index, edge_attr, _, _, _ = self.pool(x=x, edge_index=g.edge_index, edge_attr=g.edge_attr)
+        g = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=g.y)
+        return g
