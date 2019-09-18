@@ -1,4 +1,6 @@
 import os
+import torch
+
 class Args:
     DEBUG = False
     BASE_DIR = "/home/mturja"
@@ -9,3 +11,8 @@ class Args:
     OTHER_DIR = os.path.join(BASE_DIR, "AD_files")
     SUB_TO_NET_MAP = os.path.join(BASE_DIR, "AD_files/temporal_mapping.json")
     HOME_DIR = os.path.join(BASE_DIR, "AD-Longitudinal-Smoothing")
+
+    n_class = 3
+    eps = 1e-15
+    cuda = True
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

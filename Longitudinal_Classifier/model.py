@@ -52,8 +52,17 @@ class LongGNN(nn.Module):
         super(LongGNN, self).__init__()
         self.n_nodes = n_nodes
         self.n_class = n_class
-        self.layer = [GATConvPool(in_feat=in_feat[i], out_feat=in_feat[i+1],
+        if not concat:
+            self.layer = [GATConvPool(in_feat=in_feat[i], out_feat=in_feat[i+1],
                                   dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads, pooling_ratio=pooling_ratio) for i in range(n_layer)]
+        else:
+            self.layer = [GATConvPool(in_feat=in_feat[i] * (n_heads ** (i + 1)), out_feat=in_feat[i + 1] * (n_heads ** (i + 1)),
+                                      dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
+                                      pooling_ratio=pooling_ratio) if i > 0 else
+                            GATConvPool(in_feat=in_feat[i], out_feat=in_feat[i + 1] * n_heads,
+                                        dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
+                                        pooling_ratio=pooling_ratio) for i in range(n_layer)]
+
         for i, l in enumerate(self.layer):
             self.add_module('GATConvPool_{}'.format(i), l)
         reduced_node_size = n_nodes
@@ -61,8 +70,12 @@ class LongGNN(nn.Module):
             reduced_node_size = math.ceil(reduced_node_size * pooling_ratio)
 
         self.out_dim = n_class if n_class > 2 else 1
-        self.linear = nn.Sequential(nn.Linear(reduced_node_size * in_feat[-1], self.out_dim),
-                                    nn.Softmax())
+        self.concat= concat
+        if not concat:
+            self.linear = nn.Linear(reduced_node_size * in_feat[-1], self.out_dim)
+        else:
+            self.linear = nn.Linear(reduced_node_size * in_feat[-1] * n_heads, self.out_dim)
+
 
     def forward(self, G_in):
         # G is a list of graph data
@@ -72,7 +85,9 @@ class LongGNN(nn.Module):
                 g = l(g)
             G_out.append(g)
 
-        out_feat = torch.max(torch.stack([g.x for g in G_out]), 0)[0]
+        out_feat = torch.stack([g.x for g in G_out])
+        out_feat = torch.max(out_feat, 0)[0]
+        # print(out_feat.data)
         out_feat = self.linear(out_feat.view(-1, 1).squeeze())
         # for i, g in enumerate(G_out):
         #     if i != 0:

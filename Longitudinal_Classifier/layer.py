@@ -52,9 +52,9 @@ class WGATConv(GATConv):
                  negative_slope, dropout, bias, **kwargs)
 
     def forward(self, x, edge_index, edge_weight=None, size=None):
-        if size is None and torch.is_tensor(x):
-            edge_index, _ = remove_self_loops(edge_index)
-            # edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+        # if size is None and torch.is_tensor(x):
+        #     # edge_index, _ = remove_self_loops(edge_index)
+        #     # edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
 
         if edge_weight is None:
             edge_weight = torch.ones((edge_index.size(1),),
