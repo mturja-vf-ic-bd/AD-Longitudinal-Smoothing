@@ -16,3 +16,4 @@ class Args:
     eps = 1e-15
     cuda = True
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    max_t = 8

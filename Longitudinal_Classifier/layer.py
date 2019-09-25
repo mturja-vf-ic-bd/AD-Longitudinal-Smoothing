@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch_geometric.utils import remove_self_loops, add_self_loops, softmax
 from torch_geometric.nn import GATConv, TopKPooling
 from torch_geometric.data import Data
-
+from Longitudinal_Classifier.arg import Args
 
 class GraphAttentionLayer(nn.Module):
     """
@@ -108,3 +108,30 @@ class GATConvPool(nn.Module):
         x, edge_index, edge_attr, _, _, _ = self.pool(x=x, edge_index=g.edge_index, edge_attr=g.edge_attr)
         g = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=g.y)
         return g
+
+class GATConvTemporalPool(nn.Module):
+    def __init__(self, in_feat, out_feat, n_heads, dropout, alpha, concat, pooling_ratio=0.5):
+        super(GATConvTemporalPool, self).__init__()
+        self.in_feat = in_feat
+        self.out_feat = out_feat
+        self.conv = WGATConv(in_feat, out_feat, concat=concat, heads=n_heads,
+                             dropout=dropout, negative_slope=alpha)
+        self.pool = TopKPooling(out_feat * Args.max_t, ratio=pooling_ratio)
+
+    def forward(self, G_in):
+        G_out = []
+        for g in G_in:
+            x = self.conv(g.x, g.edge_index, g.edge_attr)
+            G_out.append(Data(x=x, edge_index=g.edge_index, edge_attr=g.edge_attr, y=g.y))
+
+        out_feat = torch.cat([g.x for g in G_out], dim=1)
+
+        pad_amount = self.out_feat * Args.max_t - out_feat.size(1)
+        out_feat = F.pad(out_feat, pad=(0, pad_amount), mode='constant', value=0)
+
+        # That shouldn't be done. Only one pass is enough
+        for i, g in enumerate(G_out):
+            x, g.edge_index, g.edge_attr, _, _, _ = self.pool(x=out_feat, edge_index=g.edge_index, edge_attr=g.edge_attr)
+            g.x = x[:, i * self.out_feat: (i + 1) * self.out_feat]
+
+        return G_out

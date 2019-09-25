@@ -4,7 +4,7 @@ from torch_geometric.data import Data
 from Longitudinal_Classifier.read_file import *
 from torch_geometric.nn import TopKPooling
 
-def convert_to_geom(node_feat, adj_mat, label, normalize=False, threshold=0.005):
+def convert_to_geom(node_feat, adj_mat, label, normalize=False, threshold=0.002):
     if normalize:
         adj_mat = adj_mat + adj_mat.T
         deg = adj_mat.sum(axis=1) ** (-0.5)
@@ -15,9 +15,11 @@ def convert_to_geom(node_feat, adj_mat, label, normalize=False, threshold=0.005)
     edge_ind = np.where(adj_mat > 0)
     edge_ind = torch.tensor([edge_ind[0], edge_ind[1]], dtype=torch.long)
     # adj_mat = adj_mat + np.eye(len(adj_mat))
-    edge_attr = torch.tensor(adj_mat[adj_mat > 0], dtype=torch.float, requires_grad=True).unsqueeze(1)
+    edge_attr = torch.tensor(adj_mat[adj_mat > 0], dtype=torch.float).unsqueeze(1)
+    edge_attr.requires_grad = True
     # edge_attr = torch.FloatTensor(adj_mat)
-    x = torch.tensor(node_feat, dtype=torch.float, requires_grad=True).unsqueeze(1)
+    x = torch.tensor(node_feat, dtype=torch.float).unsqueeze(1)
+    x.requires_grad = True
     g = Data(x=x, edge_index=edge_ind, edge_attr=edge_attr, y=label)
     if Args.cuda:
         g.to(Args.device)

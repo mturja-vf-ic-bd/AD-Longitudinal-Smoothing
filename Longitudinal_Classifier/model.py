@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from Longitudinal_Classifier.layer import GraphAttentionLayer, GATConvPool
+from Longitudinal_Classifier.layer import GraphAttentionLayer, GATConvTemporalPool, GATConvPool
 import numpy as np
 import math
 
@@ -12,7 +12,8 @@ class GAT(nn.Module):
         super(GAT, self).__init__()
         self.dropout = dropout
 
-        self.attentions = [GraphAttentionLayer(nfeat, nhid, dropout=dropout, alpha=alpha, concat=True) for _ in range(nheads)]
+        self.attentions = [GraphAttentionLayer(nfeat, nhid, dropout=dropout, alpha=alpha, concat=True) for _ in
+                           range(nheads)]
         for i, attention in enumerate(self.attentions):
             self.add_module('attention_{}'.format(i), attention)
 
@@ -48,49 +49,94 @@ class LongGAT(nn.Module):
 
 
 class LongGNN(nn.Module):
-    def __init__(self, in_feat=[1, 3], n_nodes=148, dropout=0.5, concat=False, alpha=0.2, n_heads=3, n_layer=1, n_class=1, pooling_ratio=0.5):
+    def __init__(self, in_feat=[1, 3], n_nodes=148, dropout=0.5, concat=False, alpha=0.2, n_heads=3, n_layer=1,
+                 n_class=1, pooling_ratio=0.5):
         super(LongGNN, self).__init__()
         self.n_nodes = n_nodes
         self.n_class = n_class
         if not concat:
-            self.layer = [GATConvPool(in_feat=in_feat[i], out_feat=in_feat[i+1],
-                                  dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads, pooling_ratio=pooling_ratio) for i in range(n_layer)]
+            self.layer = [GATConvTemporalPool(in_feat=in_feat[i], out_feat=in_feat[i + 1],
+                                              dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
+                                              pooling_ratio=pooling_ratio) for i in range(n_layer)]
         else:
-            self.layer = [GATConvPool(in_feat=in_feat[i] * (n_heads ** (i + 1)), out_feat=in_feat[i + 1] * (n_heads ** (i + 1)),
-                                      dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
-                                      pooling_ratio=pooling_ratio) if i > 0 else
-                            GATConvPool(in_feat=in_feat[i], out_feat=in_feat[i + 1] * n_heads,
-                                        dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
-                                        pooling_ratio=pooling_ratio) for i in range(n_layer)]
+            self.layer = [GATConvTemporalPool(in_feat=in_feat[i] * (n_heads ** (i + 1)),
+                                              out_feat=in_feat[i + 1] * (n_heads ** (i + 1)),
+                                              dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
+                                              pooling_ratio=pooling_ratio) if i > 0 else
+                          GATConvTemporalPool(in_feat=in_feat[i], out_feat=in_feat[i + 1] * n_heads,
+                                              dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
+                                              pooling_ratio=pooling_ratio) for i in range(n_layer)]
 
         for i, l in enumerate(self.layer):
-            self.add_module('GATConvPool_{}'.format(i), l)
+            self.add_module('GATConvTemporalPool_{}'.format(i), l)
         reduced_node_size = n_nodes
         for i in range(n_layer):
             reduced_node_size = math.ceil(reduced_node_size * pooling_ratio)
 
         self.out_dim = n_class if n_class > 2 else 1
-        self.concat= concat
+        self.concat = concat
         if not concat:
             self.linear = nn.Linear(reduced_node_size * in_feat[-1], self.out_dim)
         else:
             self.linear = nn.Linear(reduced_node_size * in_feat[-1] * n_heads, self.out_dim)
 
-
     def forward(self, G_in):
         # G is a list of graph data
-        G_out = []
-        for g in G_in:
-            for l in self.layer:
-                g = l(g)
-            G_out.append(g)
+        for i, l in enumerate(self.layer):
+            if i == 0:
+                G_out = l(G_in)
+            else:
+                G_out = l(G_out)
 
         out_feat = torch.stack([g.x for g in G_out])
         out_feat = torch.max(out_feat, 0)[0]
+        out_feat = self.linear(out_feat.view(1, -1)).squeeze()
         # print(out_feat.data)
-        out_feat = self.linear(out_feat.view(-1, 1).squeeze())
         # for i, g in enumerate(G_out):
         #     if i != 0:
         #         out_feat = torch.stack((out_feat, g.x))
 
         return out_feat
+
+
+class BaselineGNN(nn.Module):
+    def __init__(self, in_feat=[1, 3], n_nodes=148, dropout=0.5, concat=False, alpha=0.2, n_heads=3, n_layer=1,
+                 n_class=1, pooling_ratio=0.5):
+        super(BaselineGNN, self).__init__()
+        self.n_nodes = n_nodes
+        self.n_class = n_class
+        if not concat:
+            self.layer = [GATConvPool(in_feat=in_feat[i], out_feat=in_feat[i + 1],
+                                      dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
+                                      pooling_ratio=pooling_ratio) for i in range(n_layer)]
+        else:
+            self.layer = [
+                GATConvPool(in_feat=in_feat[i] * (n_heads ** (i + 1)), out_feat=in_feat[i + 1] * (n_heads ** (i + 1)),
+                            dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
+                            pooling_ratio=pooling_ratio) if i > 0 else
+                GATConvPool(in_feat=in_feat[i], out_feat=in_feat[i + 1] * n_heads,
+                            dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
+                            pooling_ratio=pooling_ratio) for i in range(n_layer)]
+
+        for i, l in enumerate(self.layer):
+            self.add_module('GATConvTemporalPool_{}'.format(i), l)
+        reduced_node_size = n_nodes
+        for i in range(n_layer):
+            reduced_node_size = math.ceil(reduced_node_size * pooling_ratio)
+
+        self.out_dim = n_class if n_class > 2 else 1
+        self.concat = concat
+        if not concat:
+            self.linear = nn.Linear(reduced_node_size * in_feat[-1], self.out_dim)
+        else:
+            self.linear = nn.Linear(reduced_node_size * in_feat[-1] * n_heads, self.out_dim)
+
+    def forward(self, g):
+        # G is a list of graph data
+        for i, l in enumerate(self.layer):
+            if i == 0:
+                g_out = l(g)
+            else:
+                g_out = l(g_out)
+
+        return g.x
