@@ -127,7 +127,7 @@ class BaselineGNN(nn.Module):
 
         self.out_dim = n_class if n_class > 2 else 1
         self.concat = concat
-        dense_dim = [reduced_node_size * in_feat[-1], 20, self.out_dim]
+        dense_dim = [reduced_node_size * in_feat[-1], 10, self.out_dim]
         self.dns_lr = [nn.Sequential(nn.Linear(dense_dim[i - 1], dense_dim[i]), nn.ReLU()) if i < len(dense_dim) - 1 else
                        nn.Linear(dense_dim[i - 1], dense_dim[i])
                        for i in range(1, len(dense_dim))]

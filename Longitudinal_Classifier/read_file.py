@@ -91,7 +91,7 @@ def read_subject_data(subject_id, data_type='all', net_dir=Args.NETWORK_DIR, con
 
         features = convert_to_feat_mat(parc_table)
         if features is not None:
-            features = features[:, 3]
+            features = features[:, 2]
 
         if network_data is None:
             continue
