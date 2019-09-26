@@ -91,7 +91,7 @@ def read_subject_data(subject_id, data_type='all', net_dir=Args.NETWORK_DIR, con
 
         features = convert_to_feat_mat(parc_table)
         if features is not None:
-            features = features[:, 2]
+            features = features[:, 3]
 
         if network_data is None:
             continue
@@ -146,12 +146,12 @@ def read_temporal_mapping():
 
     return temap
 
-def read_all_subjects(data_type='all', net_dir=Args.NETWORK_DIR, conv_to_tensor=False):
+def read_all_subjects(data_type='all', net_dir=Args.NETWORK_DIR, classes=[0, 1, 2], conv_to_tensor=False):
     data_set = []
     temp_map = read_temporal_mapping()
     for subject in temp_map.keys():
         data = read_subject_data(subject, data_type, net_dir, conv_to_tensor=conv_to_tensor)
-        if len(data['dx_label']) > 0:
+        if len(data['dx_label']) > 0 and data['dx_label'][0] in classes:
             data_set.append(data)
 
     return data_set

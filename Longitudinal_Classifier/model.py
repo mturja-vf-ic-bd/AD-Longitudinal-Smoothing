@@ -101,10 +101,11 @@ class LongGNN(nn.Module):
 
 class BaselineGNN(nn.Module):
     def __init__(self, in_feat=[1, 3], n_nodes=148, dropout=0.5, concat=False, alpha=0.2, n_heads=3, n_layer=1,
-                 n_class=1, pooling_ratio=0.5):
+                 n_class=1, pooling_ratio=0.5, batch_size=32):
         super(BaselineGNN, self).__init__()
         self.n_nodes = n_nodes
         self.n_class = n_class
+        self.batch_size = batch_size
         if not concat:
             self.layer = [GATConvPool(in_feat=in_feat[i], out_feat=in_feat[i + 1],
                                       dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
@@ -126,17 +127,26 @@ class BaselineGNN(nn.Module):
 
         self.out_dim = n_class if n_class > 2 else 1
         self.concat = concat
-        if not concat:
-            self.linear = nn.Linear(reduced_node_size * in_feat[-1], self.out_dim)
-        else:
-            self.linear = nn.Linear(reduced_node_size * in_feat[-1] * n_heads, self.out_dim)
+        dense_dim = [reduced_node_size * in_feat[-1], 20, self.out_dim]
+        self.dns_lr = [nn.Sequential(nn.Linear(dense_dim[i - 1], dense_dim[i]), nn.ReLU()) if i < len(dense_dim) - 1 else
+                       nn.Linear(dense_dim[i - 1], dense_dim[i])
+                       for i in range(1, len(dense_dim))]
+        for i, l in enumerate(self.dns_lr):
+            self.add_module('Dense_{}'.format(i), l)
+        # if not concat:
+        #     self.linear = nn.Linear(reduced_node_size * in_feat[-1], self.out_dim)
+        # else:
+        #     self.linear = nn.Linear(reduced_node_size * in_feat[-1] * n_heads, self.out_dim)
 
-    def forward(self, g):
+    def forward(self, g, batch_size):
         # G is a list of graph data
         for i, l in enumerate(self.layer):
             if i == 0:
                 g_out = l(g)
             else:
                 g_out = l(g_out)
-
-        return g.x
+        x = g_out.x.view(batch_size, -1)
+        for d in self.dns_lr:
+            x = d(x)
+        # x = self.linear(x)
+        return x

@@ -104,10 +104,11 @@ class GATConvPool(nn.Module):
         self.pool = TopKPooling(in_feat, ratio=pooling_ratio)
 
     def forward(self, g):
+        x, edge_index, edge_attr, batch = g.x, g.edge_index, g.edge_attr, g.batch
         x = self.conv(g.x, g.edge_index, g.edge_attr)
-        x, edge_index, edge_attr, _, _, _ = self.pool(x=x, edge_index=g.edge_index, edge_attr=g.edge_attr)
-        g = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=g.y)
-        return g
+        x, edge_index, edge_attr, batch, _, _ = self.pool(x=x, edge_index=edge_index, edge_attr=edge_attr, batch=batch)
+        g_out = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=g.y, batch=batch)
+        return g_out
 
 class GATConvTemporalPool(nn.Module):
     def __init__(self, in_feat, out_feat, n_heads, dropout, alpha, concat, pooling_ratio=0.5):

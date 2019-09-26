@@ -3,6 +3,7 @@ from sklearn.model_selection import StratifiedKFold
 from torch_geometric.data import Data
 from Longitudinal_Classifier.read_file import *
 from torch_geometric.nn import TopKPooling
+from sklearn.metrics import f1_score
 
 def convert_to_geom(node_feat, adj_mat, label, normalize=False, threshold=0.002):
     if normalize:
@@ -45,7 +46,8 @@ def get_train_test_fold(x, y, ratio=0.25):
 def accuracy(output, target):
     with torch.no_grad():
         pred = torch.argmax(output, dim=1)
-    return (pred == target).sum() * 100.0 / len(target)
+        # print("pred: ", pred, "\ntrue: ", target)
+        return (pred == target).sum() * 100.0 / len(target), f1_score(target.cpu(), pred.cpu(), average='micro')
 
 
 if __name__ == '__main__':
