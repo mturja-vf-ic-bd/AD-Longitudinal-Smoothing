@@ -12,7 +12,7 @@ def convert_to_geom(node_feat, adj_mat, label, normalize=False, threshold=0.005)
         deg_norm = np.outer(deg, deg)
         adj_mat = deg_norm * adj_mat
         adj_mat[adj_mat < threshold] = 0
-        adj_mat = adj_mat + 10* np.eye(len(adj_mat))
+        adj_mat = adj_mat + np.eye(len(adj_mat))
     edge_ind = np.where(adj_mat > 0)
     edge_ind = torch.tensor([edge_ind[0], edge_ind[1]], dtype=torch.long)
     # adj_mat = adj_mat + np.eye(len(adj_mat))
@@ -50,7 +50,7 @@ def accuracy(output, target):
         return (pred == target).sum() * 100.0 / len(target), f1_score(target.cpu(), pred.cpu(), average='micro')
 
 
-def getFiedlerVector(adj_mat, threshold = 1e-10):
+def getFiedlerVector(adj_mat, threshold=1e-10):
     """
     Finds the fiedler vector for a graph with adj_mat as the adjacency matrix
     :param adj_mat: numpy array with shape: (n, n)

@@ -108,7 +108,7 @@ def train(data, epoch):
 if __name__ == '__main__':
     loss = []
     ac = []
-    for i in range(100):
+    for i in range(50):
         lss, acc = train_baseline()
         loss.append(lss)
         ac.append(acc)

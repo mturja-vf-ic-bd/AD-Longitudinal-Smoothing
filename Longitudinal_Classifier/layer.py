@@ -82,7 +82,7 @@ class WGATConv(GATConv):
 
         # Sample attention coefficients stochastically.
         alpha = F.dropout(alpha, p=self.dropout, training=self.training)
-
+        # print(torch.median(alpha).data, torch.max(alpha).data)
         return x_j * alpha.view(-1, self.heads, 1)
 
     def update(self, aggr_out):
