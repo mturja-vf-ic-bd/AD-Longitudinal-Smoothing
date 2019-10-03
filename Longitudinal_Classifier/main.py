@@ -1,20 +1,33 @@
 from Longitudinal_Classifier.read_file import *
-from Longitudinal_Classifier.model import LongGAT, GATConvTemporalPool, LongGNN, BaselineGNN
+from Longitudinal_Classifier.model import LongGAT, GATConvTemporalPool, LongGNN, BaselineGNN, SimpleGCN
 from Longitudinal_Classifier.helper import convert_to_geom
-from Longitudinal_Classifier.helper import accuracy, get_train_test_fold
+from Longitudinal_Classifier.helper import accuracy, get_train_test_fold, get_betweeness_cen
 from Longitudinal_Classifier.debugger import plot_grad_flow
 import torch
 import torch_geometric.data.dataloader as loader
 from operator import itemgetter
+import timeit
+from Longitudinal_Classifier.helper import *
 
-
+start = timeit.default_timer()
 # Prepare data
-data = read_all_subjects(classes=[0, 1, 2])
+data, count = read_all_subjects(classes=[0, 1, 2], conv_to_tensor=True)
+# count = 100 / count
+
+# with open('hub_idx.pkl', 'rb') as f:
+#     hub_idx = pkl.load(f)
+#
+# for d in data:
+#     d = induce_sub(d, hub_idx)
+
 G = []
 for d in data:
+    # d["node_feature"] = get_betweeness_cen(d["adjacency_matrix"])
     for i in range(len(d["node_feature"])):
         G.append(convert_to_geom(d["node_feature"][i], d["adjacency_matrix"][i], d["dx_label"][i]))
 print("Data read finished !!!")
+stop = timeit.default_timer()
+print('Time: ', stop - start)
 
 train_idx, test_idx = get_train_test_fold(G, [g.y for g in G])
 train_idx = train_idx[0]
@@ -25,14 +38,14 @@ train_loader = loader.DataLoader(train_data, batch_size=32, shuffle=True)
 test_loader = loader.DataLoader(test_data, batch_size=32)
 
 # Prepare model
-model = BaselineGNN(in_feat=[1, 5, 5], dropout=0.3, concat=False,
-                alpha=0.2, n_heads=1, n_layer=2, n_class=3, pooling_ratio=0.4)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=0.5)
-lossFunc = torch.nn.CrossEntropyLoss()
+model = BaselineGNN(in_feat=[1, 3, 3, 1], dropout=0.1, concat=False,
+                alpha=0.2, n_heads=1, n_layer=3, n_class=3, pooling_ratio=0.5).to(Args.device)
+# model = SimpleGCN([1, 10], k=10, nclass=3).to(Args.device)
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-5, weight_decay=0.5)
+lossFunc = torch.nn.CrossEntropyLoss(weight=count)
 
-model.to(Args.device)
 
-def train_baseline():
+def train_baseline(epoch):
     model.train()
 
     loss_all = 0
@@ -42,10 +55,11 @@ def train_baseline():
         data = data.to(Args.device)
         optimizer.zero_grad()
         output = model(data, data.num_graphs)
+        # output = model(data)
         loss = lossFunc(output, data.y)
         loss.backward()
-        # if i == 0:
-        #     plot_grad_flow(model.named_parameters())
+        if i == 0 and epoch%5==0:
+            plot_grad_flow(model.named_parameters())
         loss_all += data.num_graphs * loss.item()
         optimizer.step()
         a, f1 = accuracy(output, data.y)
@@ -67,6 +81,8 @@ def test(loader):
         for data in loader:
             data = data.to(Args.device)
             pred = model(data, data.num_graphs).detach().cpu()
+
+            print("Out: ", pred.data)
             label = data.y.detach().cpu()
             predictions.append(pred)
             labels.append(label)
@@ -74,6 +90,8 @@ def test(loader):
             acc = acc + a
             f1_score = f1_score + f1
             i = i + 1
+            print("Pred: ", torch.argmax(pred, dim=1))
+            print("GT: ", label)
     return acc / i, f1 / i
 
 def train(data, epoch):
@@ -98,7 +116,7 @@ def train(data, epoch):
     # loss = lossFunc(output, target)
 
     loss.backward()
-    # plot_grad_flow(model.named_parameters())
+    plot_grad_flow(model.named_parameters())
     optimizer.step()
     acc, f1 = accuracy(output, target)
     print("Epoch: {} Loss: {}, Accuracy: {}%, F1: {}% ".format(epoch, loss.data, acc.data, f1))
@@ -108,8 +126,8 @@ def train(data, epoch):
 if __name__ == '__main__':
     loss = []
     ac = []
-    for i in range(50):
-        lss, acc = train_baseline()
+    for i in range(500):
+        lss, acc = train_baseline(i)
         loss.append(lss)
         ac.append(acc)
         print("Epoch: {}, Loss: {:0.3f}, f1: {:0.2f}".format(i, lss, acc))

@@ -110,6 +110,7 @@ class GATConvPool(nn.Module):
         g_out = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=g.y, batch=batch)
         return g_out
 
+
 class GATConvTemporalPool(nn.Module):
     def __init__(self, in_feat, out_feat, n_heads, dropout, alpha, concat, pooling_ratio=0.5):
         super(GATConvTemporalPool, self).__init__()

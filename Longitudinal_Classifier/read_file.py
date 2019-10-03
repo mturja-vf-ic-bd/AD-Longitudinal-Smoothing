@@ -3,6 +3,7 @@ import json
 import os
 from Longitudinal_Classifier.arg import Args
 import csv
+import torch
 
 def read_matrix_from_text_file(network_id, net_dir = Args.NETWORK_DIR):
     file_path = os.path.join(net_dir, network_id + "_fdt_network_matrix")
@@ -117,6 +118,7 @@ def read_subject_data(subject_id, data_type='all', net_dir=Args.NETWORK_DIR, con
         return node_feat
 
 
+
 def read_full_csv_file(col=[2, 3]):
     filename = os.path.join(Args.OTHER_DIR, "data.csv")
     table = []
@@ -149,12 +151,16 @@ def read_temporal_mapping():
 def read_all_subjects(data_type='all', net_dir=Args.NETWORK_DIR, classes=[0, 1, 2], conv_to_tensor=False):
     data_set = []
     temp_map = read_temporal_mapping()
+    count = [0, 0 ,0]
     for subject in temp_map.keys():
         data = read_subject_data(subject, data_type, net_dir, conv_to_tensor=conv_to_tensor)
         if len(data['dx_label']) > 0 and data['dx_label'][0] in classes:
             data_set.append(data)
+            count[data['dx_label'][0]] = count[data['dx_label'][0]] + 1
 
-    return data_set
+    w = torch.FloatTensor(count)
+    w = w / torch.sum(w)
+    return data_set, w.to(Args.device)
 
 
 def get_baselines(normalize=False, net_dir=Args.NETWORK_DIR, label=None):
@@ -204,7 +210,7 @@ def read_csv(fields):
                 print(projection)
             else:
                 temp = []
-                for ind in  projection:
+                for ind in projection:
                     temp.append(row[ind])
                 data.append(temp)
             line_count = line_count + 1

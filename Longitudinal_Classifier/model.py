@@ -4,7 +4,31 @@ import torch.nn.functional as F
 from Longitudinal_Classifier.layer import GraphAttentionLayer, GATConvTemporalPool, GATConvPool
 import numpy as np
 import math
+from torch_geometric.nn import GCNConv, SAGEConv
+from torch_geometric.nn.glob.sort import *
 
+class SimpleGCN(nn.Module):
+    def __init__(self, gcn_feat, k, nclass):
+        super(SimpleGCN, self).__init__()
+        self.gcn_layer = []
+        self.k = k
+        for i in range(len(gcn_feat) - 1):
+            self.gcn_layer.append(SAGEConv(gcn_feat[i], gcn_feat[i+1], normalize=True))
+            self.add_module('GCN_{}'.format(i), self.gcn_layer[i])
+        self.lin = nn.Linear(gcn_feat[-1], nclass)
+
+    def forward(self, g):
+        x, edge_index, edge_attr, batch = g.x, g.edge_index, g.edge_attr, g.batch
+        for i, l in enumerate(self.gcn_layer):
+            x = l(x=x, edge_index=edge_index, edge_weight=edge_attr)
+            x = F.leaky_relu(x, negative_slope=0.02)
+            # print((x.data == 0).sum().item(), "/", x.size(0))
+
+        # x = global_max_pool(x, batch, self.k)
+        x = x.view(batch.abs().max() + 1, -1, x.size(1))
+        x = torch.mean(x, dim=1)
+        x = self.lin(x)
+        return x
 
 class GAT(nn.Module):
     def __init__(self, nfeat, nhid, nclass, dropout, alpha, nheads):
@@ -100,8 +124,8 @@ class LongGNN(nn.Module):
 
 
 class BaselineGNN(nn.Module):
-    def __init__(self, in_feat=[1, 3], n_nodes=148, dropout=0.5, concat=False, alpha=0.2, n_heads=3, n_layer=1,
-                 n_class=1, pooling_ratio=0.5, batch_size=32):
+    def __init__(self, in_feat=[1, 3], n_nodes=20, dropout=0.5, concat=False, alpha=0.2, n_heads=3, n_layer=1,
+                 n_class=3, pooling_ratio=0.5, batch_size=32):
         super(BaselineGNN, self).__init__()
         self.n_nodes = n_nodes
         self.n_class = n_class
@@ -127,7 +151,7 @@ class BaselineGNN(nn.Module):
 
         self.out_dim = n_class if n_class > 2 else 1
         self.concat = concat
-        dense_dim = [reduced_node_size * in_feat[-1], 10, self.out_dim]
+        dense_dim = [reduced_node_size * in_feat[-1], self.out_dim]
         self.dns_lr = [nn.Sequential(nn.Linear(dense_dim[i - 1], dense_dim[i]), nn.ReLU()) if i < len(dense_dim) - 1 else
                        nn.Linear(dense_dim[i - 1], dense_dim[i])
                        for i in range(1, len(dense_dim))]
@@ -145,8 +169,8 @@ class BaselineGNN(nn.Module):
                 g_out = l(g)
             else:
                 g_out = l(g_out)
-        x = g_out.x.view(batch_size, -1)
-        for d in self.dns_lr:
-            x = d(x)
-        # x = self.linear(x)
+        # x = g_out.x.view(batch_size, -1)
+        # for d in self.dns_lr:
+        #     x = d(x)
+        # # x = self.linear(x)
         return x
