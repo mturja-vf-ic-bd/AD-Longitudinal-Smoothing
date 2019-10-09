@@ -7,6 +7,7 @@ from plot_functions import plot_matrix_all, plot_community_structure_variation
 from math import log
 from utils.helper import get_subject_names
 from collections import Counter
+from bct import community_louvain
 
 def match_list(l1, l2):
     return len(set(l1).intersection(set(l2)))

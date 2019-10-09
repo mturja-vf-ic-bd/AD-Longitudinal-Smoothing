@@ -70,9 +70,9 @@ def plot_ring(color_list_face, color_list_edge, lobes):
         colors_face += list(color)
         colors_edge += list(color_list_edge[i])
 
-    p = PatchCollection(patches, facecolors=colors_face, edgecolors=None, alpha=1)
+    p = PatchCollection(patches, facecolors=colors_face, edgecolors=colors_edge, alpha=1)
     ax.add_collection(p)
-    add_text(ax, text_coord_patch, center)
+    # add_text(ax, text_coord_patch, center)
     ax.set_axis_off()
 
     return new_patches
@@ -184,29 +184,33 @@ def plot_circle(color_list_face, color_list_edge, edges, save=True, fname='circl
         coord.append((x, y))
 
     edges = get_edges(coord, edges)
-    plot_edges(edges)
+    # plot_edges(edges)
     if save:
         fig = plt.gcf()
         fig.tight_layout()
-        fig.savefig(fname + '.png')
+        fig.savefig(fname + '.eps')
     else:
         plt.show()
 
-def main(sub="027_S_5110"):
-    data, _ = readSubjectFiles(sub, "whole", sort=False)
+def main(sub="027_S_5110", sm=False):
+    data, sm_data = readSubjectFiles(sub, "whole", sort=False)
+
+    if sm:
+        data = sm_data
 
     for t in range(0, len(data)):
         data[t], order = sort_matrix(data[t], False)
 
     # Plot Raw
     rw_links = get_top_links(data[1], count=500, offset=0, weight=True)
-    #face_color, edge_color = mp_ring_colors(data)
-    face_color, edge_color = get_lobe_wise_color_ring(len(data[1]))
-    plot_circle(face_color, edge_color, rw_links, save=False, fname='demo_cplot')
+    face_color, edge_color = get_ring_colors_wrapper(data)
+    # face_color, edge_color = mp_ring_colors(data)
+    # face_color, edge_color = get_lobe_wise_color_ring(len(data[1]))
+    plot_circle(face_color, edge_color, rw_links, save=True, fname='demo_cplot_1_sm_new_1')
 
 
 if __name__ == '__main__':
-    subname =["027_S_5110"]
+    subname =["027_S_5109"]
     for sub in subname:
         print(sub)
-        main(sub)
+        main(sub, True)

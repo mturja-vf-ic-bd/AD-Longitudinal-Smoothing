@@ -1,18 +1,23 @@
 from Longitudinal_Classifier.read_file import *
-from Longitudinal_Classifier.model import LongGAT, GATConvTemporalPool, LongGNN, BaselineGNN, SimpleGCN
+from Longitudinal_Classifier.model import LongGAT, GATConvTemporalPool, LongGNN, BaselineGNN, SimpleGCN, SimpleLinear
 from Longitudinal_Classifier.helper import convert_to_geom
 from Longitudinal_Classifier.helper import accuracy, get_train_test_fold, get_betweeness_cen
 from Longitudinal_Classifier.debugger import plot_grad_flow
 import torch
-import torch_geometric.data.dataloader as loader
+# import torch_geometric.data.dataloader as loader
+import torch.utils.data.dataloader as loader
+from Longitudinal_Classifier.sampler import ImbalancedDatasetSampler
 from operator import itemgetter
 import timeit
 from Longitudinal_Classifier.helper import *
 
 start = timeit.default_timer()
 # Prepare data
-data, count = read_all_subjects(classes=[0, 1, 2], conv_to_tensor=True)
-# count = 100 / count
+data, count = read_all_subjects(classes=[0, 2], conv_to_tensor=False)
+
+count = 1 / count
+count[torch.isinf(count)] = 0
+# count = count / torch.sum(count, dim=0)
 
 # with open('hub_idx.pkl', 'rb') as f:
 #     hub_idx = pkl.load(f)
@@ -21,15 +26,19 @@ data, count = read_all_subjects(classes=[0, 1, 2], conv_to_tensor=True)
 #     d = induce_sub(d, hub_idx)
 
 G = []
+Y = []
 for d in data:
     # d["node_feature"] = get_betweeness_cen(d["adjacency_matrix"])
     for i in range(len(d["node_feature"])):
-        G.append(convert_to_geom(d["node_feature"][i], d["adjacency_matrix"][i], d["dx_label"][i]))
+        # G.append(convert_to_geom(d["node_feature"][i].reshape(1, -1), d["adjacency_matrix"][i], d["dx_label"][i]))
+        G.append(d["node_feature"][i])
+        Y.append( d["dx_label"][i])
 print("Data read finished !!!")
 stop = timeit.default_timer()
 print('Time: ', stop - start)
 
-train_idx, test_idx = get_train_test_fold(G, [g.y for g in G])
+# train_idx, test_idx = get_train_test_fold(G, [g.y for g in G])
+train_idx, test_idx = get_train_test_fold(G, Y)
 train_idx = train_idx[0]
 test_idx = test_idx[0]
 train_data = list(itemgetter(*train_idx)(G))
@@ -38,10 +47,12 @@ train_loader = loader.DataLoader(train_data, batch_size=32, shuffle=True)
 test_loader = loader.DataLoader(test_data, batch_size=32)
 
 # Prepare model
-model = BaselineGNN(in_feat=[1, 3, 3, 1], dropout=0.1, concat=False,
-                alpha=0.2, n_heads=1, n_layer=3, n_class=3, pooling_ratio=0.5).to(Args.device)
+# model = BaselineGNN(in_feat=[1, 3, 3, 1], dropout=0.1, concat=False,
+#                 alpha=0.2, n_heads=1, n_layer=3, n_class=3, pooling_ratio=0.5).to(Args.device)
+model = SimpleLinear(dense_dim=[148, 64, 32, 3]).to(Args.device)
 # model = SimpleGCN([1, 10], k=10, nclass=3).to(Args.device)
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-5, weight_decay=0.5)
+
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, weight_decay=0.5)
 lossFunc = torch.nn.CrossEntropyLoss(weight=count)
 
 
@@ -58,12 +69,12 @@ def train_baseline(epoch):
         # output = model(data)
         loss = lossFunc(output, data.y)
         loss.backward()
-        if i == 0 and epoch%5==0:
-            plot_grad_flow(model.named_parameters())
+        # if i == 0 and epoch % 50 == 0:
+        #     plot_grad_flow(model.named_parameters())
         loss_all += data.num_graphs * loss.item()
         optimizer.step()
         a, f1 = accuracy(output, data.y)
-        acc = acc + f1
+        acc = acc + a
         # print("Acc: {.2}%".format(acc))
         i = i + 1
     return loss_all / len(G), acc / i
@@ -126,11 +137,15 @@ def train(data, epoch):
 if __name__ == '__main__':
     loss = []
     ac = []
+    prev_lss = 0
     for i in range(500):
         lss, acc = train_baseline(i)
         loss.append(lss)
         ac.append(acc)
-        print("Epoch: {}, Loss: {:0.3f}, f1: {:0.2f}".format(i, lss, acc))
+        print("Epoch: {}, Loss: {:0.3f}, acc: {:0.2f}".format(i, lss, acc))
+        # if (prev_lss - lss) ** 2 < 1e-8:
+        #     break
+        # prev_lss = lss
 
     from matplotlib import pyplot as plt
     # plt.ylim(500)

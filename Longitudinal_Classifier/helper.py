@@ -60,23 +60,25 @@ def accuracy(output, target):
         return (pred == target).sum() * 100.0 / len(target), f1_score(target.cpu(), pred.cpu(), average='micro')
 
 
-def getFiedlerVector(adj_mat, threshold=1e-10):
+def getFiedlerVector(adj_mat, c=10):
     """
     Finds the fiedler vector for a graph with adj_mat as the adjacency matrix
     :param adj_mat: numpy array with shape: (n, n)
     :param threshold: the eigen values must exceed this threshold to be considered as nonzero
     :return: fiedler vector with shape: (n, 1)
     """
-    assert (adj_mat == adj_mat.T).all(), "Adjacency matrix has to be symmetric"
+    # assert (adj_mat == adj_mat.T).all(), "Adjacency matrix has to be symmetric"
     deg_mat = np.diag(adj_mat.sum(axis=1))
     L = deg_mat - adj_mat
     eigval, eigvec = np.linalg.eigh(L)
-    fiedl_val = eigval[eigval > threshold][0]
-    fiedl_ind = np.where(eigval == fiedl_val)[0]
-    return eigvec[:, fiedl_ind].mean(axis=1, keepdims=True)  # Average of all the fiedler vector
+    sort_idx = np.argsort(eigval)
+    eigvec = eigvec[:, sort_idx]
+    eigvec = eigvec - np.mean(eigvec, axis=0, keepdims=True)
+    eigvec = eigvec / np.std(eigvec, axis=0, keepdims=True)
+    return eigvec[:, -c:]
 
 
-def getFiedlerFeature(batch_adj):
+def getFiedlerFeature(batch_adj, feat_dim=10):
     """
     Computes fiedler vector for each graph in the batch
     :param batch_adj: shape: (b, n, n) where b is the batch size and n is the number of nodes
@@ -84,9 +86,9 @@ def getFiedlerFeature(batch_adj):
     """
 
     batch_size, n_nodes, _ = batch_adj.shape
-    fiedlerFeature = np.zeros((batch_size, n_nodes, 1))
+    fiedlerFeature = np.zeros((batch_size, n_nodes, feat_dim))
     for i in range(batch_size):
-        fiedlerFeature[i] = getFiedlerVector(batch_adj[i])
+        fiedlerFeature[i] = getFiedlerVector(batch_adj[i], feat_dim)
 
     return fiedlerFeature
 
@@ -155,7 +157,7 @@ def get_hub(data):
 
 def induce_sub(data, hub_idx):
     for i in range(0, len(data["node_feature"])):
-        data["node_feature"] = data["node_feature"][i][hub_idx]
+        data["node_feature"][i] = data["node_feature"][i][:, hub_idx, :]
         data["adjacency_matrix"][i] = data["adjacency_matrix"][i][hub_idx, :]
         data["adjacency_matrix"][i] = data["adjacency_matrix"][i][:, hub_idx]
     return data

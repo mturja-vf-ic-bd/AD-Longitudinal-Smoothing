@@ -2,6 +2,7 @@ import numpy as np
 import json
 import os
 from Longitudinal_Classifier.arg import Args
+from Longitudinal_Classifier.helper import getFiedlerFeature
 import csv
 import torch
 
@@ -87,12 +88,14 @@ def read_subject_data(subject_id, data_type='all', net_dir=Args.NETWORK_DIR, con
     for network in network_arr:
         parc_table = read_parcellation_table(network["network_id"])
         network_data = read_matrix_from_text_file(network["network_id"], net_dir)
+
         if parc_table is None:
             continue
 
         features = convert_to_feat_mat(parc_table)
         if features is not None:
             features = features[:, 2]
+            features = features / np.linalg.norm(features)
 
         if network_data is None:
             continue
@@ -102,6 +105,8 @@ def read_subject_data(subject_id, data_type='all', net_dir=Args.NETWORK_DIR, con
             if Args.DEBUG:
                 print("All data found {}".format(network["network_id"]))
             adj_mat.append(network_data)
+
+            # features = getFiedlerFeature(np.expand_dims(network_data, axis=0))
             node_feat.append(features)
             dx_label.append(int(network['dx_data']) - 1)
 
@@ -116,7 +121,6 @@ def read_subject_data(subject_id, data_type='all', net_dir=Args.NETWORK_DIR, con
         return adj_mat
     else:
         return node_feat
-
 
 
 def read_full_csv_file(col=[2, 3]):
@@ -151,7 +155,7 @@ def read_temporal_mapping():
 def read_all_subjects(data_type='all', net_dir=Args.NETWORK_DIR, classes=[0, 1, 2], conv_to_tensor=False):
     data_set = []
     temp_map = read_temporal_mapping()
-    count = [0, 0 ,0]
+    count = [0, 0, 0]
     for subject in temp_map.keys():
         data = read_subject_data(subject, data_type, net_dir, conv_to_tensor=conv_to_tensor)
         if len(data['dx_label']) > 0 and data['dx_label'][0] in classes:

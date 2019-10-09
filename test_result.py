@@ -86,7 +86,7 @@ def test_result(sub, connectome_list, smoothed_connectomes, max_ind, plot_all=Fa
 
 if __name__ == '__main__':
     sub_names = get_subject_names(3)
-    sub = '027_S_5110'
+    sub = '027_S_5109'
     data_dir = os.path.join(os.path.dirname(os.getcwd()), 'AD-Data_Organized')
     connectomes, smoothed_connectomes = readSubjectFiles(sub, method="row")
     N = connectomes[0].shape[0]
@@ -94,6 +94,8 @@ if __name__ == '__main__':
     c_i = None
     s_i = None
 
+    connectomes = [connectomes[0], connectomes[-1]]
+    smoothed_connectomes = [smoothed_connectomes[-1], smoothed_connectomes[-2]]
     for t in range(0, len(connectomes)):
         connectomes[t], c_i = sort_connectomes_by_modularity(connectomes[t], c_i)
         smoothed_connectomes[t], s_i = sort_connectomes_by_modularity(smoothed_connectomes[t], s_i)

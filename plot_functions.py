@@ -26,7 +26,7 @@ def plot_matrix_all(connectomes, fname="matplt", vmin=0, vmax=0.25, savefig=True
         cbar = grid.cbar_axes[0].colorbar(im)
 
         cbar.ax.set_yticks(np.arange(vmin, vmax * 1.1, (vmax - vmin) / 4))
-        cbar.ax.tick_params(labelsize=30)
+        cbar.ax.tick_params(labelsize=40)
         cbar.ax.set_yticklabels(
             [str(vmin), str(round((vmax - vmin) / 4, 2)), str(round((vmax - vmin) / 2, 2)),
              str(round((vmax - vmin) * 3 / 4, 2)), str(vmax)])

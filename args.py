@@ -22,7 +22,7 @@ class Args:
     r = 2
     intra_r = 0.7
     pro = 1
-    base_dir = "/home/mturja"
+    base_dir = "/home/turja"
     root_directory = os.path.join(base_dir, "AD-Longitudinal-Smoothing")
     data_directory = os.path.join(base_dir, "AD-Data_Organized")
     raw_data_directory = os.path.join(base_dir, "AD-Data")
