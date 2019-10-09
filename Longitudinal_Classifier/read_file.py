@@ -2,7 +2,7 @@ import numpy as np
 import json
 import os
 from Longitudinal_Classifier.arg import Args
-from Longitudinal_Classifier.helper import getFiedlerFeature
+# from Longitudinal_Classifier.helper import getFiedlerFeature
 import csv
 import torch
 

@@ -1,12 +1,13 @@
-from Longitudinal_Classifier.read_file import *
-from Longitudinal_Classifier.model import LongGAT, GATConvTemporalPool, LongGNN, BaselineGNN, SimpleGCN, SimpleLinear
-from Longitudinal_Classifier.helper import convert_to_geom
-from Longitudinal_Classifier.helper import accuracy, get_train_test_fold, get_betweeness_cen
+# from Longitudinal_Classifier.read_file import *
+# from Longitudinal_Classifier.model import LongGAT, GATConvTemporalPool, LongGNN, BaselineGNN, SimpleGCN
+from Longitudinal_Classifier.layer2 import SimpleLinear
+# from Longitudinal_Classifier.helper import convert_to_geom
+# from Longitudinal_Classifier.helper import accuracy, get_train_test_fold, get_betweeness_cen
 from Longitudinal_Classifier.debugger import plot_grad_flow
 import torch
-# import torch_geometric.data.dataloader as loader
-import torch.utils.data.dataloader as loader
-from Longitudinal_Classifier.sampler import ImbalancedDatasetSampler
+import torch_geometric.data.dataloader as loader
+# import torch.utils.data.dataloader as loader
+# from Longitudinal_Classifier.sampler import ImbalancedDatasetSampler
 from operator import itemgetter
 import timeit
 from Longitudinal_Classifier.helper import *
@@ -30,15 +31,15 @@ Y = []
 for d in data:
     # d["node_feature"] = get_betweeness_cen(d["adjacency_matrix"])
     for i in range(len(d["node_feature"])):
-        # G.append(convert_to_geom(d["node_feature"][i].reshape(1, -1), d["adjacency_matrix"][i], d["dx_label"][i]))
-        G.append(d["node_feature"][i])
-        Y.append( d["dx_label"][i])
+        G.append(convert_to_geom(d["node_feature"][i].reshape(1, -1), d["adjacency_matrix"][i], d["dx_label"][i]))
+        # G.append(d["node_feature"][i])
+        # Y.append(d["dx_label"][i])
 print("Data read finished !!!")
 stop = timeit.default_timer()
 print('Time: ', stop - start)
 
-# train_idx, test_idx = get_train_test_fold(G, [g.y for g in G])
-train_idx, test_idx = get_train_test_fold(G, Y)
+train_idx, test_idx = get_train_test_fold(G, [g.y for g in G])
+# train_idx, test_idx = get_train_test_fold(G, Y)
 train_idx = train_idx[0]
 test_idx = test_idx[0]
 train_data = list(itemgetter(*train_idx)(G))
