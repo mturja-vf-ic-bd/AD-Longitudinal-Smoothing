@@ -32,6 +32,8 @@ Y = []
 for d in data:
     # d["node_feature"] = get_betweeness_cen(d["adjacency_matrix"])
     for i in range(len(d["node_feature"])):
+        # if d["dx_label"][i] == 0:
+            # d["node_feature"][i] = d["node_feature"][i] + 1
         G.append(convert_to_geom(d["node_feature"][i], net, d["dx_label"][i]))
         # G.append(d["node_feature"][i])
         # Y.append(d["dx_label"][i])
@@ -49,12 +51,12 @@ train_loader = loader.DataLoader(train_data, batch_size=32, shuffle=True)
 test_loader = loader.DataLoader(test_data, batch_size=32)
 
 # Prepare model
-model = BaselineGNN(in_feat=[1, 10, 10, 1], dropout=0.1, concat=False,
-                alpha=0.2, n_heads=1, n_layer=3, n_class=3, pooling_ratio=0.5).to(Args.device)
-# model = SimpleLinear(dense_dim=[148, 64, 32, 3]).to(Args.device)
+# model = BaselineGNN(in_feat=[1, 10, 10, 1], dropout=0.1, concat=False,
+#                 alpha=0.2, n_heads=1, n_layer=3, n_class=3, pooling_ratio=0.5).to(Args.device)
+model = SimpleLinear(dense_dim=[148, 64, 32, 3]).to(Args.device)
 # model = SimpleGCN([1, 10], k=10, nclass=3).to(Args.device)
 
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, weight_decay=0.5)
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, weight_decay=0.1)
 lossFunc = torch.nn.CrossEntropyLoss(weight=count)
 
 
@@ -66,6 +68,7 @@ def train_baseline(epoch):
     acc = 0
     for data in train_loader:
         data = data.to(Args.device)
+        data.x = (data.x - torch.mean(data.x, dim=0)) / torch.std(data.x, dim=0)
         optimizer.zero_grad()
         output = model(data, data.num_graphs)
         # output = model(data)
@@ -93,6 +96,7 @@ def test(loader):
         i = 0
         for data in loader:
             data = data.to(Args.device)
+            data.x = (data.x - torch.mean(data.x, dim=0)) / torch.std(data.x, dim=0)
             pred = model(data, data.num_graphs).detach().cpu()
 
             print("Out: ", pred.data)
@@ -140,7 +144,7 @@ if __name__ == '__main__':
     loss = []
     ac = []
     prev_lss = 0
-    for i in range(500):
+    for i in range(1000):
         lss, acc = train_baseline(i)
         loss.append(lss)
         ac.append(acc)
@@ -158,6 +162,7 @@ if __name__ == '__main__':
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy")
     plt.plot(ac)
+    plt.savefig('acc-loss.png')
     plt.show()
 
     test_acc, test_f1 = test(test_loader)

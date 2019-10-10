@@ -24,7 +24,7 @@ def convert_to_geom(node_feat, adj_mat, label, normalize=False, threshold=0.005)
     edge_attr = torch.tensor(adj_mat[adj_mat > 0], dtype=torch.float).unsqueeze(1)
     # edge_attr.requires_grad = True
     # edge_attr = torch.FloatTensor(adj_mat)
-    node_feat = (node_feat - node_feat.mean()) / node_feat.std()
+    # node_feat = (node_feat - node_feat.mean()) / node_feat.std()
     x = torch.tensor(node_feat, dtype=torch.float).view(1, -1)
     # x.requires_grad = True
     g = Data(x=x, edge_index=edge_ind, edge_attr=edge_attr, y=label)
