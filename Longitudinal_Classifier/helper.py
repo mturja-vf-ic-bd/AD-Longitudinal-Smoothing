@@ -6,13 +6,17 @@ from torch_geometric.nn import TopKPooling
 from sklearn.metrics import f1_score
 import pickle as pkl
 
+def normalize_net(adj_mat, threshold=0.005):
+    adj_mat = adj_mat + adj_mat.T
+    deg = adj_mat.sum(axis=1) ** (-0.5)
+    deg_norm = np.outer(deg, deg)
+    adj_mat = deg_norm * adj_mat
+    adj_mat[adj_mat < threshold] = 0
+    return adj_mat
+
 def convert_to_geom(node_feat, adj_mat, label, normalize=False, threshold=0.005):
     if normalize:
-        adj_mat = adj_mat + adj_mat.T
-        deg = adj_mat.sum(axis=1) ** (-0.5)
-        deg_norm = np.outer(deg, deg)
-        adj_mat = deg_norm * adj_mat
-        adj_mat[adj_mat < threshold] = 0
+        adj_mat = normalize_net(adj_mat, threshold)
         # adj_mat = adj_mat + 0.5 * np.eye(len(adj_mat))
     edge_ind = np.where(adj_mat > 0)
     edge_ind = torch.tensor([edge_ind[0], edge_ind[1]], dtype=torch.long)
@@ -21,7 +25,7 @@ def convert_to_geom(node_feat, adj_mat, label, normalize=False, threshold=0.005)
     # edge_attr.requires_grad = True
     # edge_attr = torch.FloatTensor(adj_mat)
     node_feat = (node_feat - node_feat.mean()) / node_feat.std()
-    x = torch.tensor(node_feat, dtype=torch.float).unsqueeze(1)
+    x = torch.tensor(node_feat, dtype=torch.float).view(1, -1)
     # x.requires_grad = True
     g = Data(x=x, edge_index=edge_ind, edge_attr=edge_attr, y=label)
     if Args.cuda:
@@ -91,6 +95,18 @@ def getFiedlerFeature(batch_adj, feat_dim=10):
         fiedlerFeature[i] = getFiedlerVector(batch_adj[i], feat_dim)
 
     return fiedlerFeature
+
+
+def get_aggr_net(data, reduce='median'):
+    for j, d in enumerate(data):
+        if j == 0:
+            M = np.stack(d["adjacency_matrix"], axis=0)
+        else:
+            temp = np.stack(d["adjacency_matrix"], axis=0)
+            M = np.concatenate((M, temp), axis=0)
+
+    if reduce == 'median':
+        return np.percentile(M, q=0.5, axis=0)
 
 
 from Longitudinal_Classifier.networkx_interface import *

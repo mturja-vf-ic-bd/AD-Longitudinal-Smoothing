@@ -17,3 +17,4 @@ class Args:
     cuda = True
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     max_t = 8
+    n_nodes = 148

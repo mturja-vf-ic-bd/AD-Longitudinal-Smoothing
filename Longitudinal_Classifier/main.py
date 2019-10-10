@@ -1,5 +1,5 @@
 # from Longitudinal_Classifier.read_file import *
-# from Longitudinal_Classifier.model import LongGAT, GATConvTemporalPool, LongGNN, BaselineGNN, SimpleGCN
+from Longitudinal_Classifier.model import LongGAT, GATConvTemporalPool, LongGNN, BaselineGNN, SimpleGCN
 from Longitudinal_Classifier.layer2 import SimpleLinear
 # from Longitudinal_Classifier.helper import convert_to_geom
 # from Longitudinal_Classifier.helper import accuracy, get_train_test_fold, get_betweeness_cen
@@ -15,6 +15,7 @@ from Longitudinal_Classifier.helper import *
 start = timeit.default_timer()
 # Prepare data
 data, count = read_all_subjects(classes=[0, 2], conv_to_tensor=False)
+net = get_aggr_net(data)
 
 count = 1 / count
 count[torch.isinf(count)] = 0
@@ -31,7 +32,7 @@ Y = []
 for d in data:
     # d["node_feature"] = get_betweeness_cen(d["adjacency_matrix"])
     for i in range(len(d["node_feature"])):
-        G.append(convert_to_geom(d["node_feature"][i].reshape(1, -1), d["adjacency_matrix"][i], d["dx_label"][i]))
+        G.append(convert_to_geom(d["node_feature"][i], net, d["dx_label"][i]))
         # G.append(d["node_feature"][i])
         # Y.append(d["dx_label"][i])
 print("Data read finished !!!")
@@ -48,9 +49,9 @@ train_loader = loader.DataLoader(train_data, batch_size=32, shuffle=True)
 test_loader = loader.DataLoader(test_data, batch_size=32)
 
 # Prepare model
-# model = BaselineGNN(in_feat=[1, 3, 3, 1], dropout=0.1, concat=False,
-#                 alpha=0.2, n_heads=1, n_layer=3, n_class=3, pooling_ratio=0.5).to(Args.device)
-model = SimpleLinear(dense_dim=[148, 64, 32, 3]).to(Args.device)
+model = BaselineGNN(in_feat=[1, 10, 10, 1], dropout=0.1, concat=False,
+                alpha=0.2, n_heads=1, n_layer=3, n_class=3, pooling_ratio=0.5).to(Args.device)
+# model = SimpleLinear(dense_dim=[148, 64, 32, 3]).to(Args.device)
 # model = SimpleGCN([1, 10], k=10, nclass=3).to(Args.device)
 
 optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, weight_decay=0.5)
