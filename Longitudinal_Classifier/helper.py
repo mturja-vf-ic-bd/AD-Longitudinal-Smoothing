@@ -15,6 +15,11 @@ def normalize_net(adj_mat, threshold=0.005):
     adj_mat = adj_mat + 0.5 * np.eye(len(adj_mat))
     return adj_mat
 
+def normalize_feat(x):
+    dim = 0 if x.dim() == 2 else 1
+    x = (x - torch.mean(x, dim=dim, keepdim=True)) / torch.std(x, dim=dim, keepdim=True)
+    return x
+
 def convert_to_geom(node_feat, adj_mat, label, normalize=False, threshold=0.005):
     if normalize:
         adj_mat = normalize_net(adj_mat, threshold)
@@ -201,6 +206,21 @@ def update_parc_table():
 
     with open(Args.OTHER_DIR + "/temporal_mapping_baselabel.json", "w") as f:
         json.dump(data, f)
+
+
+def get_crossectional(data):
+    X = []
+    Y = []
+    for i in range(len(data)):
+        # print("{}: {}, {}".format(data[i]['subject'], len(data[i]['node_feature']),
+        #                           len(data[i]['dx_label'])))
+        if len(data[i]['node_feature']) == len(data[i]['dx_label']):
+            X.extend(data[i]['node_feature'])
+            Y.extend(data[i]['dx_label'])
+        else:
+            print('{} has anomaly'.format(data[i]['subject']))
+
+    return X, Y
 
 
 if __name__ == '__main__':

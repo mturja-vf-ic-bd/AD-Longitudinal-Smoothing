@@ -15,6 +15,7 @@ start = timeit.default_timer()
 # Prepare data
 data, count = read_all_subjects(classes=[0, 2, 3], conv_to_tensor=False)
 net = get_aggr_net(data)
+net = normalize_net(net)
 
 count = 1 / count
 count[torch.isinf(count)] = 0
@@ -53,7 +54,8 @@ def train_baseline(epoch):
     acc = 0
     for data in train_loader:
         data = data.to(Args.device)
-        data.x = (data.x - torch.mean(data.x, dim=0)) / torch.std(data.x, dim=0)
+        # data.x = (data.x - torch.mean(data.x, dim=0)) / torch.std(data.x, dim=0)
+        data.x = normalize_feat(data.x)
         data.x = data.x.view(-1, 1)
         optimizer.zero_grad()
         output = model(data, data.num_graphs)

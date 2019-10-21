@@ -27,16 +27,14 @@ class GraphAttentionLayer(nn.Module):
         self.leakyrelu = nn.LeakyReLU(self.alpha)
 
     def forward(self, input, adj):
-        N = input.size(2)
-        t = input.size(1)
+        N = input.size(1)
         b = input.size(0)
         h = torch.matmul(input, self.W)
-        a_input = torch.cat([h.repeat(1, 1, N, 1).view(b, t, N * N, -1), h.repeat(1, 1, N, 1)], dim=1).view(b, t, N, -1,
-                                                                                          2 * self.out_features)
-        e = self.leakyrelu(torch.matmul(a_input, self.a).squeeze(4))
+        a_input = torch.cat([h.repeat(1, 1, N).view(b, N * N, -1), h.repeat(1, N, 1)], dim=2)
+        e = self.leakyrelu(torch.matmul(a_input, self.a).squeeze(2).view(-1, N, N))
         attention = torch.mul(adj, e)
         attention = F.dropout(attention, self.dropout, training=self.training)
-        attention = F.softmax(attention, dim=3)
+        attention = F.softmax(attention, dim=2)
 
         h_prime = torch.matmul(attention, h)
         return h_prime
