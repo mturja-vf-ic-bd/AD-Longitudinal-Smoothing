@@ -12,16 +12,16 @@ def normalize_net(adj_mat, threshold=0.005):
     deg_norm = np.outer(deg, deg)
     adj_mat = deg_norm * adj_mat
     adj_mat[adj_mat < threshold] = 0
+    adj_mat = adj_mat + 0.5 * np.eye(len(adj_mat))
     return adj_mat
 
 def convert_to_geom(node_feat, adj_mat, label, normalize=False, threshold=0.005):
     if normalize:
         adj_mat = normalize_net(adj_mat, threshold)
-        # adj_mat = adj_mat + 0.5 * np.eye(len(adj_mat))
     edge_ind = np.where(adj_mat > 0)
     edge_ind = torch.tensor([edge_ind[0], edge_ind[1]], dtype=torch.long)
     # adj_mat = adj_mat + np.eye(len(adj_mat))
-    edge_attr = torch.tensor(adj_mat[adj_mat > 0], dtype=torch.float).unsqueeze(1)
+    edge_attr = torch.tensor(adj_mat[adj_mat > 0], dtype=torch.float)
     # edge_attr.requires_grad = True
     # edge_attr = torch.FloatTensor(adj_mat)
     # node_feat = (node_feat - node_feat.mean()) / node_feat.std()
@@ -179,8 +179,33 @@ def induce_sub(data, hub_idx):
     return data
 
 
+def update_parc_table():
+    import csv
+    label_dict = {"CN" : "1", "SMC" : "1", "EMCI" : "2",  "LMCI": "3", "AD" : "4"}
+    dx_dict = {}
+    with open(Args.ORIG_DATA) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        line_count = 0
+        for row in csv_reader:
+            if line_count == 0:
+                line_count += 1
+            else:
+                dx_dict[row[2]] = label_dict[row[6]]
+
+    import json
+    with open(Args.SUB_TO_NET_MAP) as json_file:
+        data = json.load(json_file)
+        for key, val in data.items():
+            for scan in val:
+                scan["dx_data"] = dx_dict[scan["network_id"]]
+
+    with open(Args.OTHER_DIR + "/temporal_mapping_baselabel.json", "w") as f:
+        json.dump(data, f)
+
+
 if __name__ == '__main__':
-    data = read_all_subjects(classes=[0, 1, 2], conv_to_tensor=False)
+    update_parc_table()
+    # data = read_all_subjects(classes=[0, 1, 2], conv_to_tensor=False)
     # hub_idx = get_hub(data)
 
     # G = convert_to_geom_all(data["node_feature"], data["adjacency_matrix"], data["dx_label"])

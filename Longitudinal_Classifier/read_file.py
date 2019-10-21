@@ -147,17 +147,19 @@ def read_full_csv_file(col=[2, 3]):
     return table
 
 def read_temporal_mapping():
-    with open(os.path.join(Args.OTHER_DIR, 'temporal_mapping.json')) as f:
+    with open(os.path.join(Args.OTHER_DIR, 'temporal_mapping_baselabel.json')) as f:
         temap = json.load(f)
 
     return temap
 
-def read_all_subjects(data_type='all', net_dir=Args.NETWORK_DIR, classes=[0, 1, 2], conv_to_tensor=False):
+def read_all_subjects(data_type='all', net_dir=Args.NETWORK_DIR, classes=[0, 1, 2, 3], conv_to_tensor=False):
     data_set = []
     temp_map = read_temporal_mapping()
-    count = [0, 0, 0]
+    count = [0, 0, 0, 0]
     for subject in temp_map.keys():
         data = read_subject_data(subject, data_type, net_dir, conv_to_tensor=conv_to_tensor)
+        if len(data["node_feature"]) > 0:
+            data['dx_label'] = [int(elem['dx_data']) - 1 for elem in temp_map[subject]]
         if len(data['dx_label']) > 0 and data['dx_label'][0] in classes:
             data_set.append(data)
             count[data['dx_label'][0]] = count[data['dx_label'][0]] + 1

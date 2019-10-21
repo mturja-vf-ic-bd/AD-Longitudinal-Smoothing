@@ -69,7 +69,7 @@ class WGATConv(GATConv):
 
     def message(self, edge_index_i, size_i, x_i, x_j, edge_weight):
         # Compute attention coefficients.
-        x_j = x_j * edge_weight
+        x_j = x_j * edge_weight.view(-1, 1)
         x_j = x_j.view(-1, self.heads, self.out_channels)
         if x_i is None:
             alpha = (x_j * self.att[:, :, self.out_channels:]).sum(dim=-1)
@@ -97,17 +97,17 @@ class WGATConv(GATConv):
 
 
 class GATConvPool(nn.Module):
-    def __init__(self, in_feat, out_feat, n_heads, dropout, alpha, concat, pooling_ratio=0.5):
+    def __init__(self, in_feat, out_feat, n_heads, dropout, alpha, concat, pooling_ratio=0.5, n_nodes=148):
         super(GATConvPool, self).__init__()
         self.conv = WGATConv(in_feat, out_feat, concat=concat, heads=n_heads,
                              dropout=dropout, negative_slope=alpha)
-        self.pool = TopKPooling(in_feat, ratio=pooling_ratio)
+        self.pool = TopKPooling(n_nodes, ratio=pooling_ratio)
 
     def forward(self, g):
         x, edge_index, edge_attr, batch = g.x, g.edge_index, g.edge_attr, g.batch
         x = self.conv(g.x, g.edge_index, g.edge_attr)
-        x, edge_index, edge_attr, batch, _, _ = self.pool(x=x, edge_index=edge_index, edge_attr=edge_attr, batch=batch)
-        g_out = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=g.y, batch=batch)
+        x, edge_index, edge_attr, batch, _, _ = self.pool(x=torch.transpose(x, 0, 1), edge_index=edge_index, edge_attr=edge_attr, batch=batch)
+        g_out = Data(x=torch.transpose(x, 0, 1), edge_index=edge_index, edge_attr=edge_attr, y=g.y, batch=batch)
         return g_out
 
 

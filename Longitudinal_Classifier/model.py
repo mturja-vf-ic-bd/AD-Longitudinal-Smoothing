@@ -4,30 +4,37 @@ import torch.nn.functional as F
 from Longitudinal_Classifier.layer import GraphAttentionLayer, GATConvTemporalPool, GATConvPool
 import numpy as np
 import math
-from torch_geometric.nn import GCNConv, SAGEConv
+from torch_geometric.nn import GCNConv, SAGEConv, ChebConv, global_max_pool
 from torch_geometric.nn.glob.sort import *
+from Longitudinal_Classifier.arg import Args
 
 class SimpleGCN(nn.Module):
-    def __init__(self, gcn_feat, k, nclass):
+    def __init__(self, gcn_feat, dense_dim):
         super(SimpleGCN, self).__init__()
         self.gcn_layer = []
-        self.k = k
         for i in range(len(gcn_feat) - 1):
-            self.gcn_layer.append(SAGEConv(gcn_feat[i], gcn_feat[i+1], normalize=True))
+            self.gcn_layer.append(ChebConv(gcn_feat[i], gcn_feat[i+1], K=3))
             self.add_module('GCN_{}'.format(i), self.gcn_layer[i])
-        self.lin = nn.Linear(gcn_feat[-1], nclass)
+        self.dns_lr = [
+            nn.Sequential(nn.Linear(dense_dim[i - 1], dense_dim[i]), nn.ReLU()) if i < len(dense_dim) - 1 else
+            nn.Linear(dense_dim[i - 1], dense_dim[i])
+            for i in range(1, len(dense_dim))
+        ]
+        for i, l in enumerate(self.dns_lr):
+            self.add_module('Dense_{}'.format(i), l)
 
-    def forward(self, g):
+    def forward(self, g, batch_size):
         x, edge_index, edge_attr, batch = g.x, g.edge_index, g.edge_attr, g.batch
         for i, l in enumerate(self.gcn_layer):
-            x = l(x=x, edge_index=edge_index, edge_weight=edge_attr)
+            x = l(x=x, edge_index=edge_index, edge_weight=edge_attr, batch=batch)
             x = F.leaky_relu(x, negative_slope=0.02)
             # print((x.data == 0).sum().item(), "/", x.size(0))
 
-        # x = global_max_pool(x, batch, self.k)
-        x = x.view(batch.abs().max() + 1, -1, x.size(1))
-        x = torch.mean(x, dim=1)
-        x = self.lin(x)
+        # x = global_max_pool(x, batch)
+        x = x.view(batch_size, -1, x.size(1))
+        x = torch.max(x, dim=1, keepdim=False)[0]
+        for l in self.dns_lr:
+            x = l(x)
         return x
 
 class SimpleLinear(nn.Module):
@@ -153,14 +160,14 @@ class BaselineGNN(nn.Module):
         if not concat:
             self.layer = [GATConvPool(in_feat=in_feat[i], out_feat=in_feat[i + 1],
                                       dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
-                                      pooling_ratio=pooling_ratio) for i in range(n_layer)]
+                                      pooling_ratio=pooling_ratio, n_nodes = int(Args.n_nodes * pooling_ratio ** i)) for i in range(n_layer)]
         else:
             self.layer = [
                 GATConvPool(in_feat=in_feat[i] * (n_heads ** (i + 1)), out_feat=in_feat[i + 1] * (n_heads ** (i + 1)),
-                            dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
+                            dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads, n_nodes=int(Args.n_nodes * pooling_ratio ** i),
                             pooling_ratio=pooling_ratio) if i > 0 else
                 GATConvPool(in_feat=in_feat[i], out_feat=in_feat[i + 1] * n_heads,
-                            dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads,
+                            dropout=dropout, concat=concat, alpha=alpha, n_heads=n_heads, n_nodes=int(Args.n_nodes * pooling_ratio ** i),
                             pooling_ratio=pooling_ratio) for i in range(n_layer)]
 
         for i, l in enumerate(self.layer):
