@@ -252,6 +252,17 @@ def read_net_cmn():
     return cmn_net
 
 
+def get_cluster_assignment_matrix():
+    from utils.helper import get_lobe_idx, get_lobe_order
+    lobe_idx = get_lobe_idx()
+    lobe_order = get_lobe_order()
+    c = len(lobe_idx.keys())
+    S = np.zeros((148, c))
+    S
+
+
+
+
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
     # update_parc_table()
