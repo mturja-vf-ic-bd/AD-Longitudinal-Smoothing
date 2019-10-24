@@ -13,7 +13,7 @@ class SimpleGCN(nn.Module):
         super(SimpleGCN, self).__init__()
         self.gcn_layer = []
         for i in range(len(gcn_feat) - 1):
-            self.gcn_layer.append(ChebConv(gcn_feat[i], gcn_feat[i+1], K=3))
+            self.gcn_layer.append(SAGEConv(gcn_feat[i], gcn_feat[i+1], normalize=True))
             self.add_module('GCN_{}'.format(i), self.gcn_layer[i])
         self.dns_lr = [
             nn.Sequential(nn.Linear(dense_dim[i - 1], dense_dim[i]), nn.ReLU()) if i < len(dense_dim) - 1 else
@@ -26,8 +26,10 @@ class SimpleGCN(nn.Module):
     def forward(self, g, batch_size):
         x, edge_index, edge_attr, batch = g.x, g.edge_index, g.edge_attr, g.batch
         for i, l in enumerate(self.gcn_layer):
-            x = l(x=x, edge_index=edge_index, edge_weight=edge_attr, batch=batch)
-            x = F.leaky_relu(x, negative_slope=0.02)
+            if i > 0:
+                x = F.dropout(x)
+            x = l(x=x, edge_index=edge_index, edge_weight=edge_attr)
+            x = F.leaky_relu(x, negative_slope=0.01)
             # print((x.data == 0).sum().item(), "/", x.size(0))
 
         # x = global_max_pool(x, batch)

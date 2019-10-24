@@ -6,13 +6,17 @@ from torch_geometric.nn import TopKPooling
 from sklearn.metrics import f1_score
 import pickle as pkl
 
-def normalize_net(adj_mat, threshold=0.005):
-    adj_mat = adj_mat + adj_mat.T
+def normalize_net(adj_mat, threshold=0.005, self_loop=True, sym=True):
+    if sym:
+        adj_mat = adj_mat + adj_mat.T
     deg = adj_mat.sum(axis=1) ** (-0.5)
-    deg_norm = np.outer(deg, deg)
+    deg2 = adj_mat.sum(axis=0) ** (-0.5)
+    deg_norm = np.outer(deg, deg2)
+
     adj_mat = deg_norm * adj_mat
     adj_mat[adj_mat < threshold] = 0
-    adj_mat = adj_mat + 0.5 * np.eye(len(adj_mat))
+    if self_loop:
+        adj_mat = adj_mat + 0.5 * np.eye(len(adj_mat))
     return adj_mat
 
 def normalize_feat(x):
@@ -208,24 +212,72 @@ def update_parc_table():
         json.dump(data, f)
 
 
-def get_crossectional(data):
+def get_crossectional(data, label=[0,1,2,3]):
     X = []
     Y = []
     for i in range(len(data)):
         # print("{}: {}, {}".format(data[i]['subject'], len(data[i]['node_feature']),
         #                           len(data[i]['dx_label'])))
-        if len(data[i]['node_feature']) == len(data[i]['dx_label']):
-            X.extend(data[i]['node_feature'])
-            Y.extend(data[i]['dx_label'])
-        else:
-            print('{} has anomaly'.format(data[i]['subject']))
+        for j in range(len(data[i]['node_feature'])):
+            if data[i]['dx_label'][j] in label:
+                X.append(data[i]['node_feature'][j])
+                Y.append(data[i]['dx_label'][j])
 
     return X, Y
 
 
+def CMN(cort_thk):
+    # cort_thk N*C numpy array for N subjects
+    cmn = np.dot(cort_thk, cort_thk.T)
+    cmn[cmn < 0] = 0
+    np.fill_diagonal(cmn, 0)
+    cmn = normalize_net(cmn, 0, False, sym=False)
+    cmn = topKthreshold(cmn, 2500)
+    return cmn
+
+def topKthreshold(connectome, K=1):
+    connectome = np.array(connectome)
+    row, col = connectome.shape
+    idx = np.argsort(connectome, axis=None)[0:row*col-K][::-1]
+    idx_row = idx // col
+    idx_col = idx % col
+    connectome[idx_row, idx_col] = 0
+    return connectome
+
+def read_net_cmn():
+    cmn_net = []
+    for i in range(4):
+        with open('cmn_'+str(i), 'r') as f:
+            cmn_net.append(torch.FloatTensor(np.loadtxt(f)))
+    return cmn_net
+
+
 if __name__ == '__main__':
-    update_parc_table()
-    # data = read_all_subjects(classes=[0, 1, 2], conv_to_tensor=False)
+    from matplotlib import pyplot as plt
+    # update_parc_table()
+    data, count = read_all_subjects(classes=[0, 1, 2, 3], conv_to_tensor=False)
+
+    X, Y = get_crossectional(data, [0, 1, 2, 3])
+    X = np.array(X)
+    std_ = X.std(axis=0, keepdims=True)
+    mn = X.mean(axis=0, keepdims=True)
+
+    for i in range(4):
+        X, Y = get_crossectional(data, [i])
+        X = np.array(X)
+        X = (X - mn) / std_
+
+        fig, ax = plt.subplots()
+        cmn = CMN(X.T)
+        with open('cmn_'+str(i), 'w') as f:
+            np.savetxt(f, cmn)
+
+        from utils.sortDetriuxNodes import sort_matrix
+        cmn, _ = sort_matrix(cmn)
+        im = ax.imshow(cmn)
+        fig.tight_layout()
+        plt.savefig('CMN_'+str(i))
+        # plt.show()
     # hub_idx = get_hub(data)
 
     # G = convert_to_geom_all(data["node_feature"], data["adjacency_matrix"], data["dx_label"])

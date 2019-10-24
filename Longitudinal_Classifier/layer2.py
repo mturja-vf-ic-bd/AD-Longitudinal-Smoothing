@@ -20,7 +20,9 @@ class SimpleLinear(nn.Module):
     def forward(self, g, batch):
         x = g.x
         x = x.view(batch, -1)
-        for l in self.dns_lr:
+        for i, l in enumerate(self.dns_lr):
+            if i > 0:
+                x = F.dropout(x)
             x = l(x)
         # x = torch.mean(x, dim=1)
         return x
@@ -44,6 +46,7 @@ class GraphConvolution(nn.Module):
 
     def reset_parameters(self):
         stdv = 1. / math.sqrt(self.weight.size(1))
+        # stdv = .5
         self.weight.data.uniform_(-stdv, stdv)
         if self.bias is not None:
             self.bias.data.uniform_(-stdv, stdv)
@@ -60,10 +63,10 @@ class GraphConvolution(nn.Module):
 class GAT_DiffPool(nn.Module):
     def __init__(self, in_feat, out_feat, dropout, alpha, c=6):
         super(GAT_DiffPool, self).__init__()
-        # self.gat = GraphAttentionLayer(in_feat, out_feat, dropout, alpha)
-        # self.assign_mat = GraphAttentionLayer(in_feat, c, dropout, alpha)
-        self.gat = GraphConvolution(in_feat, out_feat)
-        self.assign_mat = GraphConvolution(in_feat, c)
+        self.gat = GraphAttentionLayer(in_feat, out_feat, dropout, alpha)
+        self.assign_mat = GraphAttentionLayer(in_feat, c, dropout, alpha)
+        # self.gat = GraphConvolution(in_feat, out_feat)
+        # self.assign_mat = GraphConvolution(in_feat, c)
 
     def forward(self, X, A):
         Z = F.relu(self.gat(X, A))

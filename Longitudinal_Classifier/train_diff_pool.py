@@ -8,9 +8,10 @@ from Longitudinal_Classifier.helper import *
 
 start = timeit.default_timer()
 # Prepare data
-data, count = read_all_subjects(classes=[2, 3], conv_to_tensor=False)
-net = get_aggr_net(data)
-net = torch.FloatTensor(normalize_net(net)).to(Args.device)
+data, count = read_all_subjects(classes=[0, 2, 3], conv_to_tensor=False)
+net_struct = get_aggr_net(data)
+net_struct = torch.FloatTensor(normalize_net(net_struct)).to(Args.device)
+net_cmn = read_net_cmn()
 X, Y = get_crossectional(data)
 count = 1 / count
 count[torch.isinf(count)] = 0
@@ -28,9 +29,9 @@ test_x = torch.FloatTensor(list(itemgetter(*test_idx)(X))).unsqueeze(2).to(Args.
 test_y = torch.LongTensor(list(itemgetter(*test_idx)(Y))).to(Args.device)
 
 # Prepare model
-model = GDNet([1, 128, 64], dropout=0.2, alpha=0.01, n_class=4, c=[32, 16])
+model = GDNet([1, 64, 32, 16], dropout=0.5, alpha=0.01, n_class=4, c=[16, 8, 4])
 
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, weight_decay=0.05)
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, weight_decay=0.05)
 lossFunc = torch.nn.CrossEntropyLoss(weight=count)
 
 def train_baseline(epoch, train_x, train_y):
@@ -38,9 +39,9 @@ def train_baseline(epoch, train_x, train_y):
 
     train_x = normalize_feat(train_x)
     optimizer.zero_grad()
-    output, _, link_loss, ent_loss = model(train_x, net)
+    output, _, link_loss, ent_loss = model(train_x, net_cmn[0])
     # output = model(data)
-    loss = lossFunc(output, train_y)
+    loss = 100 * lossFunc(output, train_y)
     loss += link_loss + ent_loss
     loss.backward()
     if epoch % 20 == 0:
@@ -61,7 +62,7 @@ def test(test_x, test_y):
 
     with torch.no_grad():
         test_x = normalize_feat(test_x)
-        pred = model(test_x, net).detach().cpu()
+        pred = model(test_x, net_struct).detach().cpu()
         # pred = model(data).detach().cpu()
 
         label = test_y.detach().cpu()
