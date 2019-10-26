@@ -8,11 +8,13 @@ from Longitudinal_Classifier.helper import *
 
 start = timeit.default_timer()
 # Prepare data
-data, count = read_all_subjects(classes=[0, 2, 3], conv_to_tensor=False)
+data, count = read_all_subjects(classes=[0, 3], conv_to_tensor=False)
 net_struct = get_aggr_net(data)
 net_struct = torch.FloatTensor(normalize_net(net_struct)).to(Args.device)
 net_cmn = read_net_cmn()
 X, Y = get_crossectional(data)
+S, S_com = get_cluster_assignment_matrix()
+X = np.concatenate((X[:, :, np.newaxis], np.repeat(S_com[np.newaxis, :, :], X.shape[0], axis=0)), axis=2)
 count = 1 / count
 count[torch.isinf(count)] = 0
 
@@ -23,15 +25,24 @@ print('Time: ', stop - start)
 train_idx, test_idx = get_train_test_fold(X, Y)
 train_idx = train_idx[0]
 test_idx = test_idx[0]
-train_x = torch.FloatTensor(list(itemgetter(*train_idx)(X))).unsqueeze(2).to(Args.device)
-train_y = torch.LongTensor(list(itemgetter(*train_idx)(Y))).to(Args.device)
-test_x = torch.FloatTensor(list(itemgetter(*test_idx)(X))).unsqueeze(2).to(Args.device)
+train_x = X[train_idx]
+train_y = Y[train_idx]
+from imblearn.over_sampling import SMOTE
+sm = SMOTE(random_state=42)
+train_x = train_x.reshape(train_x.shape[0], -1)
+train_x, train_y = sm.fit_resample(train_x, train_y)
+train_x = torch.FloatTensor(train_x.reshape(train_x.shape[0], 148, -1)).to(Args.device)
+train_y = torch.LongTensor(train_y).to(Args.device)
+test_x = torch.FloatTensor(list(itemgetter(*test_idx)(X))).to(Args.device)
 test_y = torch.LongTensor(list(itemgetter(*test_idx)(Y))).to(Args.device)
 
 # Prepare model
-model = GDNet([1, 64, 32, 16], dropout=0.5, alpha=0.01, n_class=4, c=[16, 8, 4])
+model = GDNet([8, 128, 64], dropout=0.2, alpha=0.01, n_class=4, c=[24, 8]).to(Args.device)
+print("Cuda Available: ", torch.cuda.is_available(),
+      "\nDevice: ", Args.device)
 
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, weight_decay=0.05)
+
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-6, weight_decay=0.05)
 lossFunc = torch.nn.CrossEntropyLoss(weight=count)
 
 def train_baseline(epoch, train_x, train_y):
@@ -41,10 +52,10 @@ def train_baseline(epoch, train_x, train_y):
     optimizer.zero_grad()
     output, _, link_loss, ent_loss = model(train_x, net_cmn[0])
     # output = model(data)
-    loss = 100 * lossFunc(output, train_y)
+    loss = 50*lossFunc(output, train_y)
     loss += link_loss + ent_loss
     loss.backward()
-    if epoch % 20 == 0:
+    if epoch % 20 == 1:
         plot_grad_flow(model.named_parameters())
         torch.save({
             'epoch': epoch,

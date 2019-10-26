@@ -68,9 +68,10 @@ class GAT_DiffPool(nn.Module):
         # self.gat = GraphConvolution(in_feat, out_feat)
         # self.assign_mat = GraphConvolution(in_feat, c)
 
-    def forward(self, X, A):
+    def forward(self, X, A, S=None):
         Z = F.relu(self.gat(X, A))
-        S = F.relu(self.assign_mat(X, A))
+        if S is None:
+            S = F.relu(self.assign_mat(X, A))
         X_new, A_new, link_loss, ent_loss = dense_diff_pool(Z, A, S)
         return X_new, A_new, link_loss, ent_loss
 

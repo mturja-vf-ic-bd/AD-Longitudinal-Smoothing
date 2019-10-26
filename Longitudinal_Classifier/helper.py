@@ -223,7 +223,7 @@ def get_crossectional(data, label=[0,1,2,3]):
                 X.append(data[i]['node_feature'][j])
                 Y.append(data[i]['dx_label'][j])
 
-    return X, Y
+    return np.array(X), np.array(Y)
 
 
 def CMN(cort_thk):
@@ -257,37 +257,48 @@ def get_cluster_assignment_matrix():
     lobe_idx = get_lobe_idx()
     lobe_order = get_lobe_order()
     c = len(lobe_idx.keys())
-    S = np.zeros((148, c))
-    S
+    S = np.zeros((148, c), dtype=int)
+    S_com = np.zeros((148, c//2 + 1), dtype=int)
+    for key, val in lobe_idx.items():
+        col = lobe_order.index(key)
+        S[np.array(val), col] = 1
+        if col < c//2:
+            S_com[np.array(val), col] = 1
+            S_com[np.array(val), c//2] = 0
+        else:
+            S_com[np.array(val), col % (c//2)] = 1
+            S_com[np.array(val), c // 2] = 1
 
-
+    return S, S_com
 
 
 if __name__ == '__main__':
-    from matplotlib import pyplot as plt
-    # update_parc_table()
-    data, count = read_all_subjects(classes=[0, 1, 2, 3], conv_to_tensor=False)
-
-    X, Y = get_crossectional(data, [0, 1, 2, 3])
-    X = np.array(X)
-    std_ = X.std(axis=0, keepdims=True)
-    mn = X.mean(axis=0, keepdims=True)
-
-    for i in range(4):
-        X, Y = get_crossectional(data, [i])
-        X = np.array(X)
-        X = (X - mn) / std_
-
-        fig, ax = plt.subplots()
-        cmn = CMN(X.T)
-        with open('cmn_'+str(i), 'w') as f:
-            np.savetxt(f, cmn)
-
-        from utils.sortDetriuxNodes import sort_matrix
-        cmn, _ = sort_matrix(cmn)
-        im = ax.imshow(cmn)
-        fig.tight_layout()
-        plt.savefig('CMN_'+str(i))
+    S, S_com = get_cluster_assignment_matrix()
+    print(S)
+    # from matplotlib import pyplot as plt
+    # # update_parc_table()
+    # data, count = read_all_subjects(classes=[0, 1, 2, 3], conv_to_tensor=False)
+    #
+    # X, Y = get_crossectional(data, [0, 1, 2, 3])
+    # X = np.array(X)
+    # std_ = X.std(axis=0, keepdims=True)
+    # mn = X.mean(axis=0, keepdims=True)
+    #
+    # for i in range(4):
+    #     X, Y = get_crossectional(data, [i])
+    #     X = np.array(X)
+    #     X = (X - mn) / std_
+    #
+    #     fig, ax = plt.subplots()
+    #     cmn = CMN(X.T)
+    #     with open('cmn_'+str(i), 'w') as f:
+    #         np.savetxt(f, cmn)
+    #
+    #     from utils.sortDetriuxNodes import sort_matrix
+    #     cmn, _ = sort_matrix(cmn)
+    #     im = ax.imshow(cmn)
+    #     fig.tight_layout()
+    #     plt.savefig('CMN_'+str(i))
         # plt.show()
     # hub_idx = get_hub(data)
 
