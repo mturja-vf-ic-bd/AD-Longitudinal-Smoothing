@@ -48,25 +48,22 @@ def train_baseline(epoch):
         # data.x = normalize_feat(data.x)
         data.x = data.x.view(-1, 1)
         optimizer.zero_grad()
-        output, l= model(data)
-        # output = model(data)
-        loss = 50*lossFunc(output, data.y) + 0.01 * l
-        loss.backward()
-        if i == 0 and epoch % 50 == 0:
-            plot_grad_flow(model.named_parameters())
-            torch.save({
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'loss': loss
-            }, Args.MODEL_CP_PATH + "/model_chk_" + str(epoch))
-
-        loss_all += data.num_graphs * loss.item()
-        optimizer.step()
-        a, f1 = accuracy(output, data.y)
-        acc = acc + a
-        # print("Acc: {.2}%".format(acc))
-        i = i + 1
+        recon = model(data)
+        # if i == 0 and epoch % 50 == 0:
+        #     plot_grad_flow(model.named_parameters())
+        #     torch.save({
+        #         'epoch': epoch,
+        #         'model_state_dict': model.state_dict(),
+        #         'optimizer_state_dict': optimizer.state_dict(),
+        #         'loss': loss
+        #     }, Args.MODEL_CP_PATH + "/model_chk_" + str(epoch))
+        #
+        # loss_all += data.num_graphs * loss.item()
+        # optimizer.step()
+        # a, f1 = accuracy(output, data.y)
+        # acc = acc + a
+        # # print("Acc: {.2}%".format(acc))
+        # i = i + 1
     return loss_all / len(G), acc / i
 
 def test(loader):
@@ -96,34 +93,6 @@ def test(loader):
             print("Pred: ", torch.argmax(pred, dim=1))
             print("GT: ", label)
     return acc / i, f1 / i
-
-def train(data, epoch):
-    """
-    Train the Longitudinal model
-    :param data: Graph Object from torch-geometric
-    :param target: class labels
-    :return:
-    """
-
-    output = torch.empty((len(data), Args.n_class))
-    target = torch.empty(len(data), dtype=torch.long)
-    loss = torch.zeros(1).cuda()
-    optimizer.zero_grad()
-    for i, d in enumerate(data):
-        # print("Data: ", i)
-        out = model(d)
-        loss = loss + lossFunc(out.view(1, -1), torch.LongTensor([d[-1].y]).cuda())
-        output[i] = out
-        target[i] = d[-1].y
-        # print(output[i])
-    # loss = lossFunc(output, target)
-
-    loss.backward()
-    plot_grad_flow(model.named_parameters())
-    optimizer.step()
-    acc, f1 = accuracy(output, target)
-    print("Epoch: {} Loss: {}, Accuracy: {}%, F1: {}% ".format(epoch, loss.data, acc.data, f1))
-    return loss.data, acc.data
 
 
 if __name__ == '__main__':
