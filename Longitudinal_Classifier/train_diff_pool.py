@@ -50,7 +50,7 @@ def train_baseline(epoch, train_x, train_y):
 
     train_x = normalize_feat(train_x)
     optimizer.zero_grad()
-    output, _, link_loss, ent_loss = model(train_x, net_cmn[0])
+    output, _, link_loss, ent_loss = model(train_x, net_struct)
     # output = model(data)
     loss = 50*lossFunc(output, train_y)
     loss += link_loss + ent_loss

@@ -13,7 +13,7 @@ from Longitudinal_Classifier.helper import *
 
 start = timeit.default_timer()
 # Prepare data
-data, count = read_all_subjects(classes=[0, 2, 3], conv_to_tensor=False)
+data, count = read_all_subjects(classes=[2, 3], conv_to_tensor=False)
 net = get_aggr_net(data)
 net = normalize_net(net)
 net_cmn = read_net_cmn()
@@ -25,7 +25,8 @@ G = []
 Y = []
 for d in data:
     for i in range(len(d["node_feature"])):
-        G.append(convert_to_geom(d["node_feature"][i], net_cmn[d["dx_label"][i]], d["dx_label"][i]))
+        G.append(convert_to_geom(d["node_feature"][i], net, d["dx_label"][i]))
+net = torch.FloatTensor(net).to(Args.device)
 print("Data read finished !!!")
 stop = timeit.default_timer()
 print('Time: ', stop - start)
@@ -41,10 +42,10 @@ test_loader = loader.DataLoader(test_data, batch_size=32)
 # Prepare model
 # model = BaselineGNN(in_feat=[1, 32, 16], dropout=0.1, concat=False,
 #                 alpha=0.2,d["dx_label"][i] n_heads=1, n_layer=2, n_class=4, pooling_ratio=0.5).to(Args.device)
-model = SimpleLinear(dense_dim=[148, 64, 32, 4]).to(Args.device)
-# model = SimpleGCN([1, 64], dense_dim=[64, 32, 4]).to(Args.device)
+# model = SimpleLinear(dense_dim=[148, 64, 32, 4]).to(Args.device)
+model = SimpleGCN([1, 64], dense_dim=[64, 32, 4]).to(Args.device)
 
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, weight_decay=0.01)
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, weight_decay=0.01)
 lossFunc = torch.nn.CrossEntropyLoss(weight=count)
 
 def train_baseline(epoch):
@@ -59,9 +60,9 @@ def train_baseline(epoch):
         # data.x = normalize_feat(data.x)
         data.x = data.x.view(-1, 1)
         optimizer.zero_grad()
-        output = model(data, data.num_graphs)
+        output, l  = model(data, data.num_graphs, net)
         # output = model(data)
-        loss = lossFunc(output, data.y)
+        loss = 50*lossFunc(output, data.y) + 0.01 * l
         loss.backward()
         if i == 0 and epoch % 50 == 0:
             plot_grad_flow(model.named_parameters())
@@ -93,7 +94,7 @@ def test(loader):
             data = data.to(Args.device)
             data.x = (data.x - torch.mean(data.x, dim=0)) / torch.std(data.x, dim=0)
             data.x = data.x.view(-1, 1)
-            pred = model(data, data.num_graphs).detach().cpu()
+            pred = model(data, data.num_graphs, net).detach().cpu()
             # pred = model(data).detach().cpu()
 
             print("Out: ", pred.data)

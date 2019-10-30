@@ -23,13 +23,18 @@ class SimpleGCN(nn.Module):
         for i, l in enumerate(self.dns_lr):
             self.add_module('Dense_{}'.format(i), l)
 
-    def forward(self, g, batch_size):
+    def forward(self, g, batch_size, net):
         x, edge_index, edge_attr, batch = g.x, g.edge_index, g.edge_attr, g.batch
+        I = torch.eye(x.size(1)).unsqueeze(0).to(Args.device)
+        loss = torch.sum(torch.matmul(torch.matmul(torch.transpose(x.view(batch_size, -1, x.size(1)), 1, 2), net), x.view(batch_size, -1, x.size(1))) * I)
         for i, l in enumerate(self.gcn_layer):
             if i > 0:
                 x = F.dropout(x)
             x = l(x=x, edge_index=edge_index, edge_weight=edge_attr)
             x = F.leaky_relu(x, negative_slope=0.01)
+            loss += torch.sum(torch.matmul(torch.matmul(
+                torch.transpose(x.view(batch_size, -1, x.size(1)), 1, 2), net),
+                x.view(batch_size, -1, x.size(1))) * I)
             # print((x.data == 0).sum().item(), "/", x.size(0))
 
         # x = global_max_pool(x, batch)
@@ -37,7 +42,7 @@ class SimpleGCN(nn.Module):
         x = torch.max(x, dim=1, keepdim=False)[0]
         for l in self.dns_lr:
             x = l(x)
-        return x
+        return x, loss
 
 class SimpleLinear(nn.Module):
     def __init__(self, dense_dim):
