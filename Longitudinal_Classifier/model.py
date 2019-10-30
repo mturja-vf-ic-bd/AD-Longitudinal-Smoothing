@@ -210,3 +210,13 @@ class BaselineGNN(nn.Module):
         return x
 
 
+class ReconNet(nn.Module):
+    def __init__(self,  n_layer=[1, 8, 32, 64]):
+        super(ReconNet, self).__init__()
+        self.gcn = nn.Sequential([SAGEConv(n_layer[i-1], n_layer[i]) for i in range(1, len(n_layer))])
+
+    def forward(self, g):
+        X = self.gcn(g)
+        A_recon = F.relu(torch.matmul(X, X))
+        return A_recon
+

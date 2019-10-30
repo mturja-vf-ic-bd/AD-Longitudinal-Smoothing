@@ -106,17 +106,40 @@ def getFiedlerFeature(batch_adj, feat_dim=10):
     return fiedlerFeature
 
 
-def get_aggr_net(data, reduce='median'):
+def get_aggr_net(data, reduce='median', label=[0,1,2,3]):
+    M = None
     for j, d in enumerate(data):
-        if j == 0:
-            M = np.stack(d["adjacency_matrix"], axis=0)
-        else:
-            temp = np.stack(d["adjacency_matrix"], axis=0)
-            M = np.concatenate((M, temp), axis=0)
+        if d["dx_label"][0] in label:
+            if M is None:
+                M = np.stack(d["adjacency_matrix"], axis=0)
+            else:
+                temp = np.stack(d["adjacency_matrix"], axis=0)
+                M = np.concatenate((M, temp), axis=0)
 
     if reduce == 'median':
         return np.percentile(M, q=0.5, axis=0)
 
+
+def plot_group_net(data, reduce='median', label=[0, 1, 2, 3]):
+    from matplotlib import pyplot as plt
+    from utils.sortDetriuxNodes import sort_matrix
+    net_list = []
+    net_cmn = read_net_cmn(tensor=False)
+    for l in label:
+        net = normalize_net(get_aggr_net(data, reduce, label=[l]), self_loop=False, threshold=0)
+        for i in range(3):
+            net = normalize_net(net + np.dot(net.T, net), threshold=0, self_loop=False)
+        # net = normalize_net(net * net_cmn[l], threshold=0, self_loop=False)
+        net = sort_matrix(net)[0]
+        net_list.append(net)
+
+    plt.figure(figsize=(30, 10))
+    plt.tight_layout()
+    for i, net in enumerate(net_list):
+        plt.subplot(1, len(net_list), i+1)
+        plt.xlabel(str(i))
+        plt.imshow(net)
+    plt.show()
 
 from Longitudinal_Classifier.networkx_interface import *
 class hubInducer:
@@ -232,7 +255,7 @@ def CMN(cort_thk):
     cmn[cmn < 0] = 0
     np.fill_diagonal(cmn, 0)
     cmn = normalize_net(cmn, 0, False, sym=False)
-    cmn = topKthreshold(cmn, 2500)
+    cmn = topKthreshold(cmn, 4000)
     return cmn
 
 def topKthreshold(connectome, K=1):
@@ -244,11 +267,14 @@ def topKthreshold(connectome, K=1):
     connectome[idx_row, idx_col] = 0
     return connectome
 
-def read_net_cmn():
+def read_net_cmn(tensor=True):
     cmn_net = []
     for i in range(4):
         with open('cmn_'+str(i), 'r') as f:
-            cmn_net.append(torch.FloatTensor(np.loadtxt(f)))
+            m = np.loadtxt(f)
+            if tensor:
+                m = torch.FloatTensor(m)
+            cmn_net.append(m)
     return cmn_net
 
 
@@ -273,33 +299,37 @@ def get_cluster_assignment_matrix():
 
 
 if __name__ == '__main__':
-    S, S_com = get_cluster_assignment_matrix()
-    print(S)
-    # from matplotlib import pyplot as plt
+    # S, S_com = get_cluster_assignment_matrix()
+    # print(S)
+    from matplotlib import pyplot as plt
     # # update_parc_table()
-    # data, count = read_all_subjects(classes=[0, 1, 2, 3], conv_to_tensor=False)
-    #
-    # X, Y = get_crossectional(data, [0, 1, 2, 3])
-    # X = np.array(X)
-    # std_ = X.std(axis=0, keepdims=True)
-    # mn = X.mean(axis=0, keepdims=True)
-    #
-    # for i in range(4):
-    #     X, Y = get_crossectional(data, [i])
-    #     X = np.array(X)
-    #     X = (X - mn) / std_
-    #
-    #     fig, ax = plt.subplots()
-    #     cmn = CMN(X.T)
-    #     with open('cmn_'+str(i), 'w') as f:
-    #         np.savetxt(f, cmn)
-    #
-    #     from utils.sortDetriuxNodes import sort_matrix
-    #     cmn, _ = sort_matrix(cmn)
-    #     im = ax.imshow(cmn)
-    #     fig.tight_layout()
-    #     plt.savefig('CMN_'+str(i))
-        # plt.show()
+    data, count = read_all_subjects(classes=[0, 1, 2, 3], conv_to_tensor=False)
+    plot_group_net(data, label=[0,1,2,3])
+
+    X, Y = get_crossectional(data, [0, 1, 2, 3])
+    X = np.array(X)
+    std_ = X.std(axis=0, keepdims=True)
+    mn = X.mean(axis=0, keepdims=True)
+
+    plt.figure(figsize=(30, 10))
+    plt.tight_layout()
+
+    for i in range(4):
+        X, Y = get_crossectional(data, [i])
+        # X = np.array(X)
+        # X = (X - mn) / std_
+
+        cmn = CMN(X.T)
+        with open('cmn_'+str(i), 'w') as f:
+            np.savetxt(f, cmn)
+
+        from utils.sortDetriuxNodes import sort_matrix
+
+        cmn = sort_matrix(cmn)[0]
+        plt.subplot(1, 4, i + 1)
+        plt.xlabel(str(i))
+        plt.imshow(cmn)
+    plt.show()
     # hub_idx = get_hub(data)
 
     # G = convert_to_geom_all(data["node_feature"], data["adjacency_matrix"], data["dx_label"])
