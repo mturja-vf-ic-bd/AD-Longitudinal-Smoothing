@@ -1,10 +1,13 @@
 from Longitudinal_Classifier.model import ReconNet
 from Longitudinal_Classifier.debugger import plot_grad_flow
-import torch
+import torch.nn.functional as F
+from torch_geometric.utils import to_dense_adj
 import torch_geometric.data.dataloader as loader
 from operator import itemgetter
 import timeit
 from Longitudinal_Classifier.helper import *
+from matplotlib import pyplot as plt
+from utils.sortDetriuxNodes import sort_matrix
 
 start = timeit.default_timer()
 # Prepare data
@@ -17,7 +20,7 @@ G = []
 Y = []
 for d in data:
     for i in range(len(d["node_feature"])):
-        G.append(convert_to_geom(d["node_feature"][i], d["adjacency_matrix"][i], d["dx_label"][i]))
+        G.append(convert_to_geom(d["node_feature"][i], d["adjacency_matrix"][i], d["dx_label"][i], normalize=True, threshold=0.001))
 
 print("Data read finished !!!")
 stop = timeit.default_timer()
@@ -31,95 +34,91 @@ test_data = list(itemgetter(*test_idx)(G))
 train_loader = loader.DataLoader(train_data, batch_size=32, shuffle=True)
 test_loader = loader.DataLoader(test_data, batch_size=32)
 
-model = ReconNet()
+S, S_con = get_cluster_assignment_matrix()
+S = torch.FloatTensor(S).unsqueeze(0).to(Args.device)
 
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, weight_decay=0.01)
-lossFunc = torch.nn.CrossEntropyLoss(weight=count)
+model = ReconNet()
+model.to(Args.device)
+
+I_prime = (1 - torch.eye(Args.n_nodes, Args.n_nodes).unsqueeze(0)).to(Args.device)
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, weight_decay=0.05)
 
 def train_baseline(epoch):
     model.train()
 
     loss_all = 0
     i = 0
-    acc = 0
+    N = 0
     for data in train_loader:
         data = data.to(Args.device)
         # data.x = (data.x - torch.mean(data.x, dim=0)) / torch.std(data.x, dim=0)
         # data.x = normalize_feat(data.x)
-        data.x = data.x.view(-1, 1)
         optimizer.zero_grad()
         recon = model(data)
-        # if i == 0 and epoch % 50 == 0:
-        #     plot_grad_flow(model.named_parameters())
-        #     torch.save({
-        #         'epoch': epoch,
-        #         'model_state_dict': model.state_dict(),
-        #         'optimizer_state_dict': optimizer.state_dict(),
-        #         'loss': loss
-        #     }, Args.MODEL_CP_PATH + "/model_chk_" + str(epoch))
-        #
-        # loss_all += data.num_graphs * loss.item()
-        # optimizer.step()
-        # a, f1 = accuracy(output, data.y)
-        # acc = acc + a
-        # # print("Acc: {.2}%".format(acc))
-        # i = i + 1
-    return loss_all / len(G), acc / i
+        gt = to_dense_adj(data.edge_index, batch=data.batch, edge_attr=data.edge_attr)
+        loss = F.mse_loss(recon, gt)
+        n = recon.size(1)
+        l1_loss_1 = torch.sum(torch.abs(recon)[:, 0:n//2, n//2:n]) + torch.sum(torch.abs(recon)[:, n//2:n, 0:n//2])
+        l1_loss_2 = torch.sum(torch.abs(recon)[:, 0:n // 2, 0:n // 2]) + torch.sum(torch.abs(recon)[:, n // 2:n, n // 2:n])
 
-def test(loader):
+
+        modularity_loss_inter = torch.sum(torch.matmul(torch.matmul(torch.transpose(S, 1, 2), recon), S))
+        modularity_loss_intra = torch.sum(torch.matmul(S, torch.transpose(S, 1, 2)) * I_prime * recon)
+        loss = 1e4 * loss + 1e-5 * l1_loss_1 + 1e-6 * l1_loss_2 + 1e-4 * (modularity_loss_inter - 10*modularity_loss_intra)
+        loss.backward()
+        optimizer.step()
+
+        if i == 0 and epoch % 50 == 0:
+            # plot_grad_flow(model.named_parameters())
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': loss
+            }, Args.MODEL_CP_PATH + "/model_chk_" + str(epoch))
+        i = i + 1
+        loss_all += loss.item() * data.num_graphs
+        N = N + data.num_graphs
+    return loss_all / N
+
+def test(epoch):
     model.eval()
-    predictions = []
-    labels = []
-
+    loss = 0
+    N = 0
     with torch.no_grad():
-        acc = 0
-        f1_score = 0
         i = 0
-        for data in loader:
+        for data in test_loader:
             data = data.to(Args.device)
-            data.x = (data.x - torch.mean(data.x, dim=0)) / torch.std(data.x, dim=0)
-            data.x = data.x.view(-1, 1)
-            pred = model(data, data.num_graphs, net).detach().cpu()
-            # pred = model(data).detach().cpu()
+            recon = model(data)
+            gt = to_dense_adj(data.edge_index, batch=data.batch, edge_attr=data.edge_attr)
+            loss += F.mse_loss(recon, gt) * data.num_graphs
+            N = N + data.num_graphs
+            gt = to_dense_adj(data.edge_index, batch=data.batch, edge_attr=data.edge_attr)
 
-            print("Out: ", pred.data)
-            label = data.y.detach().cpu()
-            predictions.append(pred)
-            labels.append(label)
-            a, f1 = accuracy(pred, label)
-            acc = acc + a
-            f1_score = f1_score + f1
-            i = i + 1
-            print("Pred: ", torch.argmax(pred, dim=1))
-            print("GT: ", label)
-    return acc / i, f1 / i
+            if i == 0 and epoch % 50 == 0:
+                plt.subplot(1, 2, 1)
+                plt.imshow(sort_matrix(recon[0].detach().cpu().data.numpy())[0])
+                plt.subplot(1, 2, 2)
+                plt.imshow(sort_matrix(gt[0].detach().cpu().data.numpy())[0])
+                plt.show()
+                i = 1
+
+    return loss / N
 
 
 if __name__ == '__main__':
-    loss = []
-    ac = []
-    prev_lss = 0
-    for i in range(3000):
-        lss, acc = train_baseline(i)
-        loss.append(lss)
-        ac.append(acc)
-        print("Epoch: {}, Loss: {:0.3f}, acc: {:0.2f}".format(i, lss, acc))
-        # if (prev_lss - lss) ** 2 < 1e-8:
-        #     break
-        # prev_lss = lss
-
-    from matplotlib import pyplot as plt
-    # plt.ylim(500)
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.plot(loss)
-    plt.savefig('loss.png')
-    plt.show()
-    plt.xlabel("Epoch")
-    plt.ylabel("Accuracy")
-    plt.plot(ac)
-    plt.savefig('acc.png')
-    plt.show()
-
-    test_acc, test_f1 = test(test_loader)
-    print("Test Accuracy: {:0.2f}%, \nF1 Score: {:0.2f}".format(test_acc, test_f1))
+    loss_train = []
+    loss_test = []
+    model.load_state_dict(torch.load(Args.MODEL_CP_PATH + "/model_chk_" + str(2905)))
+    model.eval()
+    # for i in range(3000):
+    #     loss_tr = train_baseline(i)
+    #     loss_ts = test(i)
+    #     loss_train.append(loss_tr)
+    #     loss_test.append(loss_ts)
+    #     if i % 50 == 0:
+    #         print("Epoch: {}, Train Loss: {:0.5f}, Test Loss: {:0.5f}".format(i, loss_tr, loss_ts))
+    #
+    # plt.plot(loss_train, 'r')
+    # plt.plot(loss_test, 'b')
+    # plt.show()

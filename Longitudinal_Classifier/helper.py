@@ -9,8 +9,8 @@ import pickle as pkl
 def normalize_net(adj_mat, threshold=0.005, self_loop=True, sym=True):
     if sym:
         adj_mat = adj_mat + adj_mat.T
-    deg = adj_mat.sum(axis=1) ** (-0.5)
-    deg2 = adj_mat.sum(axis=0) ** (-0.5)
+    deg = (adj_mat.sum(axis=1) + 1e-10) ** (-0.5)
+    deg2 = (adj_mat.sum(axis=0) + 1e-10) ** (-0.5)
     deg_norm = np.outer(deg, deg2)
 
     adj_mat = deg_norm * adj_mat
@@ -34,7 +34,7 @@ def convert_to_geom(node_feat, adj_mat, label, normalize=False, threshold=0.005)
     # edge_attr.requires_grad = True
     # edge_attr = torch.FloatTensor(adj_mat)
     # node_feat = (node_feat - node_feat.mean()) / node_feat.std()
-    x = torch.tensor(node_feat, dtype=torch.float).view(1, -1)
+    x = torch.tensor(node_feat, dtype=torch.float).view(-1, 1)
     # x.requires_grad = True
     g = Data(x=x, edge_index=edge_ind, edge_attr=edge_attr, y=label)
     if Args.cuda:
@@ -209,7 +209,6 @@ def induce_sub(data, hub_idx):
         data["adjacency_matrix"][i] = data["adjacency_matrix"][i][hub_idx, :]
         data["adjacency_matrix"][i] = data["adjacency_matrix"][i][:, hub_idx]
     return data
-
 
 def update_parc_table():
     import csv

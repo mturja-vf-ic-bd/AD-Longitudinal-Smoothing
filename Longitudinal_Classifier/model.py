@@ -7,6 +7,9 @@ import math
 from torch_geometric.nn import GCNConv, SAGEConv, ChebConv, global_max_pool
 from torch_geometric.nn.glob.sort import *
 from Longitudinal_Classifier.arg import Args
+from Longitudinal_Classifier.helper import normalize_net
+
+I_prime = (1 - torch.eye(Args.n_nodes, Args.n_nodes).unsqueeze(0)).to(Args.device)
 
 class SimpleGCN(nn.Module):
     def __init__(self, gcn_feat, dense_dim):
@@ -211,18 +214,27 @@ class BaselineGNN(nn.Module):
 
 
 class ReconNet(nn.Module):
-    def __init__(self,  gcn_feat=[1, 8, 32, 64]):
+    def __init__(self,  gcn_feat=[1, 8, 64, 128, 64]):
         super(ReconNet, self).__init__()
         self.gcn_layer = []
         for i in range(len(gcn_feat) - 1):
             self.gcn_layer.append(SAGEConv(gcn_feat[i], gcn_feat[i+1], normalize=True))
             self.add_module('GCN_{}'.format(i), self.gcn_layer[i])
+            nn.init.normal_(self.gcn_layer[i].weight, 0, 1)
 
     def forward(self, g):
-        x, edge_index, edge_attr, batch = g.x, g.edge_index, g.edge_attr, g.batch
+        x, edge_index, edge_attr, batch, batch_size = g.x, g.edge_index, g.edge_attr, g.batch, g.num_graphs
         for i, l in enumerate(self.gcn_layer):
             x = l(x=x, edge_index=edge_index, edge_weight=edge_attr)
             x = F.relu(x)
-        A_recon = torch.ger(x, x)
+            if i < len(self.gcn_layer) - 1:
+                x = F.dropout(x)
+        x = x.view(batch_size, -1, x.size(1))
+        # x_std = x.std(dim=2, keepdim=True)
+        # x = (x - x.mean(dim=2, keepdim=True)) / x_std
+        A_recon = torch.matmul(x, torch.transpose(x, 1, 2)) * I_prime
+        deg = (torch.sum(A_recon, dim=1, keepdim=True) + 1e-10) ** (-0.5)
+        norm = torch.matmul(torch.transpose(deg, 1, 2), deg)
+        A_recon = A_recon * norm
         return A_recon
 
