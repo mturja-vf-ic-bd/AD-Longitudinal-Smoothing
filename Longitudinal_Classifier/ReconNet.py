@@ -110,7 +110,7 @@ if __name__ == '__main__':
     loss_train = []
     loss_test = []
     model.load_state_dict(torch.load(Args.MODEL_CP_PATH + "/model_chk_" + str(2905)))
-    model.eval()
+    test()
     # for i in range(3000):
     #     loss_tr = train_baseline(i)
     #     loss_ts = test(i)
