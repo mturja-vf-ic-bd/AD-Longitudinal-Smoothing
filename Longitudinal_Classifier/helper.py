@@ -24,18 +24,20 @@ def normalize_feat(x):
     x = (x - torch.mean(x, dim=dim, keepdim=True)) / torch.std(x, dim=dim, keepdim=True)
     return x
 
-def convert_to_geom(node_feat, adj_mat, label, normalize=False, threshold=0.005):
+def convert_to_geom(node_feat, adj_mat, label, normalize=False, threshold=0.005, self_loop=False, extend_node=True):
     if normalize:
-        adj_mat = normalize_net(adj_mat, threshold)
+        adj_mat = normalize_net(adj_mat, threshold, self_loop=self_loop)
     edge_ind = np.where(adj_mat > 0)
     edge_ind = torch.tensor([edge_ind[0], edge_ind[1]], dtype=torch.long)
     # adj_mat = adj_mat + np.eye(len(adj_mat))
     edge_attr = torch.tensor(adj_mat[adj_mat > 0], dtype=torch.float)
-    # edge_attr.requires_grad = True
-    # edge_attr = torch.FloatTensor(adj_mat)
     # node_feat = (node_feat - node_feat.mean()) / node_feat.std()
     x = torch.tensor(node_feat, dtype=torch.float).view(-1, 1)
-    # x.requires_grad = True
+    x_I = torch.eye(x.size(0))
+    x = torch.cat((x, x_I), 1)
+    S, x_con = get_cluster_assignment_matrix()
+    x = torch.cat((x, torch.FloatTensor(x_con)), 1)
+
     g = Data(x=x, edge_index=edge_ind, edge_attr=edge_attr, y=label)
     if Args.cuda:
         g.to(Args.device)

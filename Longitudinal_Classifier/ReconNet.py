@@ -18,9 +18,12 @@ count[torch.isinf(count)] = 0
 
 G = []
 Y = []
+I_node = torch.eye(148)
 for d in data:
     for i in range(len(d["node_feature"])):
         G.append(convert_to_geom(d["node_feature"][i], d["adjacency_matrix"][i], d["dx_label"][i], normalize=True, threshold=0.001))
+        # G.append(convert_to_geom(I_node, d["adjacency_matrix"][i], d["dx_label"][i], normalize=True, threshold=0.001))
+
 
 print("Data read finished !!!")
 stop = timeit.default_timer()
@@ -41,7 +44,7 @@ model = ReconNet()
 model.to(Args.device)
 
 I_prime = (1 - torch.eye(Args.n_nodes, Args.n_nodes).unsqueeze(0)).to(Args.device)
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, weight_decay=0.05)
+optimizer = torch.optim.SGD(model.parameters(), lr=3e-3, weight_decay=0.01)
 
 def train_baseline(epoch):
     model.train()
@@ -61,10 +64,9 @@ def train_baseline(epoch):
         l1_loss_1 = torch.sum(torch.abs(recon)[:, 0:n//2, n//2:n]) + torch.sum(torch.abs(recon)[:, n//2:n, 0:n//2])
         l1_loss_2 = torch.sum(torch.abs(recon)[:, 0:n // 2, 0:n // 2]) + torch.sum(torch.abs(recon)[:, n // 2:n, n // 2:n])
 
-
         modularity_loss_inter = torch.sum(torch.matmul(torch.matmul(torch.transpose(S, 1, 2), recon), S))
         modularity_loss_intra = torch.sum(torch.matmul(S, torch.transpose(S, 1, 2)) * I_prime * recon)
-        loss = 1e4 * loss + 1e-5 * l1_loss_1 + 1e-6 * l1_loss_2 + 1e-4 * (modularity_loss_inter - 10*modularity_loss_intra)
+        loss = 1e3 * loss + 1e-6 * l1_loss_1 + 1e-7 * l1_loss_2 + 0 * (modularity_loss_inter + modularity_loss_intra)
         loss.backward()
         optimizer.step()
 
@@ -75,7 +77,7 @@ def train_baseline(epoch):
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': loss
-            }, Args.MODEL_CP_PATH + "/model_chk_" + str(epoch))
+            }, Args.MODEL_CP_PATH + "/model_chk_modloss" + str(epoch))
         i = i + 1
         loss_all += loss.item() * data.num_graphs
         N = N + data.num_graphs
@@ -109,16 +111,16 @@ def test(epoch):
 if __name__ == '__main__':
     loss_train = []
     loss_test = []
-    model.load_state_dict(torch.load(Args.MODEL_CP_PATH + "/model_chk_" + str(2905)))
-    model.eval()
-    # for i in range(3000):
-    #     loss_tr = train_baseline(i)
-    #     loss_ts = test(i)
-    #     loss_train.append(loss_tr)
-    #     loss_test.append(loss_ts)
-    #     if i % 50 == 0:
-    #         print("Epoch: {}, Train Loss: {:0.5f}, Test Loss: {:0.5f}".format(i, loss_tr, loss_ts))
-    #
-    # plt.plot(loss_train, 'r')
-    # plt.plot(loss_test, 'b')
-    # plt.show()
+    # model.load_state_dict(torch.load(Args.MODEL_CP_PATH + "/model_chk_" + str(750)))
+    # model.eval()
+    for i in range(0, 20000):
+        loss_tr = train_baseline(i)
+        loss_ts = test(i)
+        loss_train.append(loss_tr)
+        loss_test.append(loss_ts)
+        if i % 50 == 0:
+            print("Epoch: {}, Train Loss: {:0.5f}, Test Loss: {:0.5f}".format(i, loss_tr, loss_ts))
+
+    plt.plot(loss_train, 'r')
+    plt.plot(loss_test, 'b')
+    plt.show()

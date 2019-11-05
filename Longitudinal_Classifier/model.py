@@ -214,9 +214,10 @@ class BaselineGNN(nn.Module):
 
 
 class ReconNet(nn.Module):
-    def __init__(self,  gcn_feat=[1, 8, 64, 128, 64]):
+    def __init__(self,  gcn_feat=[156, 32, 16]):
         super(ReconNet, self).__init__()
         self.gcn_layer = []
+        self.rho = nn.Sequential(nn.Linear(gcn_feat[-1], gcn_feat[-1]), nn.ReLU())
         for i in range(len(gcn_feat) - 1):
             self.gcn_layer.append(SAGEConv(gcn_feat[i], gcn_feat[i+1], normalize=True))
             self.add_module('GCN_{}'.format(i), self.gcn_layer[i])
@@ -230,11 +231,16 @@ class ReconNet(nn.Module):
             if i < len(self.gcn_layer) - 1:
                 x = F.dropout(x)
         x = x.view(batch_size, -1, x.size(1))
+        x = self.rho(x)
         # x_std = x.std(dim=2, keepdim=True)
         # x = (x - x.mean(dim=2, keepdim=True)) / x_std
         A_recon = torch.matmul(x, torch.transpose(x, 1, 2)) * I_prime
-        deg = (torch.sum(A_recon, dim=1, keepdim=True) + 1e-10) ** (-0.5)
-        norm = torch.matmul(torch.transpose(deg, 1, 2), deg)
-        A_recon = A_recon * norm
+        # deg = (torch.sum(A_recon, dim=1, keepdim=True) + 1e-10) ** (-0.5)
+        # norm = torch.matmul(torch.transpose(deg, 1, 2), deg)
+        # A_recon = A_recon * norm
         return A_recon
 
+class LinearGraphVAE(nn.Module):
+    def __init__(self):
+        super(LinearGraphVAE, self).__init__()
+        self.layer = []
