@@ -26,7 +26,8 @@ class Args:
     root_directory = os.path.join(base_dir, "AD-Longitudinal-Smoothing")
     data_directory = os.path.join(base_dir, "AD-Data_Organized")
     raw_data_directory = os.path.join(base_dir, "AD-Data")
-    data_file = os.path.join(base_dir, "DXData.csv")
     other_file = os.path.join(base_dir, "AD_files")
+    parc_file = os.path.join(other_file, 'temporal_mapping.json')
+    data_file = os.path.join(other_file, "data.csv")
 
 
