@@ -36,7 +36,7 @@ class CorticoSpatialGraph:
 
 
 if __name__ == '__main__':
-    csg = CorticoSpatialGraph('S88071_parcellationTable.json')
+    csg = CorticoSpatialGraph('S146119_parcellationTable.json')
     adj = csg.compute_graph().numpy()
     np.savetxt(Args.base_dir + '/cortico_spatial_graph.txt', adj)
 

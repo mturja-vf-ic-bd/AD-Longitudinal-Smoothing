@@ -218,48 +218,36 @@ class ReconNet(nn.Module):
         super(ReconNet, self).__init__()
         self.gcn_layer = []
         # self.sum_feat = sum(gcn_feat) - gcn_feat[0]
-        self.sum_feat = gcn_feat[-1]
-        self.encode = nn.Sequential(nn.Linear(gcn_feat[0], gcn_feat[1]), nn.ReLU())
-        self.rho_mean = nn.Sequential(nn.Linear(self.sum_feat, self.sum_feat), nn.ReLU())
-        self.rho_std = nn.Sequential(nn.Linear(self.sum_feat, self.sum_feat), nn.ReLU())
-        for i in range(1, len(gcn_feat) - 1):
+        # self.sum_feat = gcn_feat[-1]
+        self.decode = nn.Sequential(nn.Linear(gcn_feat[-1], 8), nn.ReLU())
+        # self.rho_mean = nn.Sequential(nn.Linear(self.sum_feat, self.sum_feat), nn.ReLU())
+        # self.rho_std = nn.Sequential(nn.Linear(self.sum_feat, self.sum_feat), nn.ReLU())
+        for i in range(0, len(gcn_feat) - 1):
             self.gcn_layer.append(SAGEConv(gcn_feat[i], gcn_feat[i+1], normalize=True))
-            self.add_module('GCN_{}'.format(i-1), self.gcn_layer[i-1])
-            nn.init.normal_(self.gcn_layer[i-1].weight, 0, 1)
-
-    def reparameterize(self, mu, logvar):
-        if self.training:
-            std = torch.exp(logvar)
-            eps = torch.randn_like(std)
-            return eps.mul(std).add_(mu)
-        else:
-            return mu
+            self.add_module('GCN_{}'.format(i), self.gcn_layer[i])
+            nn.init.normal_(self.gcn_layer[i].weight, 0, 1)
 
     def forward(self, g):
-        x, edge_index, edge_attr, batch, batch_size = g.x, g.edge_index, g.edge_attr, g.batch, g.num_graphs
-        # x = self.encode(x)
+        x_orig, edge_index, edge_attr, batch, batch_size = g.x, g.edge_index, g.edge_attr, g.batch, g.num_graphs
         for i, l in enumerate(self.gcn_layer):
-            x_new = l(x=x, edge_index=edge_index, edge_weight=edge_attr)
-            x_new = F.relu(x_new)
+            if i == 0:
+                x = l(x=x_orig, edge_index=edge_index, edge_weight=edge_attr)
+            else:
+                x = l(x=x, edge_index=edge_index, edge_weight=edge_attr)
+            x = F.relu(x)
             if i < len(self.gcn_layer) - 1:
-                x_new = F.dropout(x_new)
-            # if i == 0:
-            #     x_multi = x
-            # x_multi = torch.cat((x_multi, x_new), dim=1)
-            x = x_new
-        # x_multi = x_multi.view(batch_size, -1, x_multi.size(1))
+                x = F.dropout(x)
+        x_orig = x_orig.view(batch_size, -1, x_orig.size(1))
         x = x.view(batch_size, -1, x.size(1))
-        mu = self.rho_mean(x)
-        logvar = self.rho_std(x)
-        # z = self.reparameterize(mu, logvar)
-        # x_std = x.std(dim=2, keepdim=True)
-        # x = (x - x.mean(dim=2, keepdim=True)) / x_std
-        A_recon = torch.matmul(mu, torch.transpose(mu, 1, 2)) * I_prime
-        A_mask = torch.sigmoid(torch.matmul(logvar, torch.transpose(logvar, 1, 2))) * I_prime
-        deg = (torch.sum(A_recon, dim=1, keepdim=True) + 1e-10) ** (-0.5)
-        norm = torch.matmul(torch.transpose(deg, 1, 2), deg)
-        A_recon = A_recon * norm
-        return A_recon, A_mask
+        # x = x / x.norm(p=2, dim=2, keepdim=True)
+        x_recon = self.decode(x)
+        A_recon = torch.matmul(x, torch.transpose(x, 1, 2)) * I_prime
+        # A_mask = torch.sigmoid(torch.matmul(logvar, torch.transpose(logvar, 1, 2))) * I_prime
+        # deg = (torch.sum(A_recon, dim=1, keepdim=True) + 1e-10) ** (-0.5)
+        # norm = torch.matmul(torch.transpose(deg, 1, 2), deg)
+        # A_recon = A_recon * norm
+        # A_recon = torch.sigmoid(A_recon)
+        return A_recon, x, F.mse_loss(x_recon, x_orig[:,:,:8])
 
 class LinearGraphVAE(nn.Module):
     def __init__(self):
