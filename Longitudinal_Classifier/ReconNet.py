@@ -16,8 +16,8 @@ data, count = read_all_subjects(classes=[0, 1, 2, 3], conv_to_tensor=False)
 # Structural Mask
 net = get_aggr_net(data)
 net = normalize_net(net)
-net[net > 0] = 1
-net = torch.LongTensor(net).to(Args.device)
+# net[net > 0] = 1
+net = torch.FloatTensor(net).to(Args.device)
 
 # Cortico Spatial Network
 csg = torch.FloatTensor(np.loadtxt('/home/mturja/tmp/AD-Long/cortico_spatial_graph.txt'))
@@ -51,11 +51,11 @@ test_loader = loader.DataLoader(test_data, batch_size=32)
 S, S_con = get_cluster_assignment_matrix()
 S = torch.FloatTensor(S).unsqueeze(0).to(Args.device)
 
-model = ReconNet(gcn_feat=[164, 64, 64])
+model = ReconNet(gcn_feat=[164, 128, 64])
 model.to(Args.device)
 
 I_prime = (1 - torch.eye(Args.n_nodes, Args.n_nodes).unsqueeze(0)).to(Args.device)
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, weight_decay=0.01)
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-6, weight_decay=0.01)
 
 logger = Logger('./logs')
 
@@ -76,20 +76,20 @@ def train_baseline(epoch):
         gt = to_dense_adj(data.edge_index, batch=data.batch, edge_attr=data.edge_attr)
         # loss_mask = torch.mean(-net * torch.log(mask+1e-5) - (1 - net) * torch.log(1 - mask + 1e-5)) + torch.mean(mask * torch.log(1 - mask + 1e-5))
         recon_loss = F.mse_loss(recon, gt, reduce=None)
-        spatial_loss = torch.sum(torch.matmul(torch.matmul(torch.transpose(x, 1, 2), csg), x) * torch.eye(x.size(2)).to(Args.device))
+        spatial_loss = torch.sum(torch.matmul(torch.matmul(torch.transpose(x, 1, 2), recon), x) * torch.eye(x.size(2)).to(Args.device))
         # loss = loss + loss_mask + torch.mean(torch.abs(mask))
         n = recon.size(1)
-        # l1_loss_1 = torch.sum(torch.abs(recon)[:, 0:n//2, n//2:n]) + torch.sum(torch.abs(recon)[:, n//2:n, 0:n//2])
-        # l1_loss_2 = torch.sum(torch.abs(recon)[:, 0:n // 2, 0:n // 2]) + torch.sum(torch.abs(recon)[:, n // 2:n, n // 2:n])
+        l1_loss_1 = torch.sum(torch.abs(recon)[:, 0:n//2, n//2:n]) + torch.sum(torch.abs(recon)[:, n//2:n, 0:n//2])
+        l1_loss_2 = torch.sum(torch.abs(recon)[:, 0:n // 2, 0:n // 2]) + torch.sum(torch.abs(recon)[:, n // 2:n, n // 2:n])
 
         # modularity_loss_inter = torch.sum(torch.matmul(torch.matmul(torch.transpose(S, 1, 2), recon), S))
         # modularity_loss_intra = torch.sum(torch.matmul(S, torch.transpose(S, 1, 2)) * I_prime * recon)
-        loss = 1e3 * recon_loss + x_loss + 1e-2*spatial_loss
+        loss = recon_loss + spatial_loss
         loss.backward()
         optimizer.step()
 
         if i == 0 and epoch % 20 == 0:
-            # print("Loss: {:.3f}, Spatial Loss: {:.3f}, L1 Loss 1: {:.3f}, L1 Loss 2: {:.3f}".format(loss.data, spatial_loss.data, l1_loss_1.data, l1_loss_2.data))
+            print("Loss: {:.3f}, Spatial Loss: {:.3f}, L1 Loss 1: {:.3f}, L1 Loss 2: {:.3f}".format(loss.data, spatial_loss.data, l1_loss_1.data, l1_loss_2.data))
             # 1. Log scalar values (scalar summary)
             info = {'recon_loss': recon_loss.item(), 'recon_loss_x': x_loss, 'spatial_loss': spatial_loss}
 
@@ -100,7 +100,7 @@ def train_baseline(epoch):
             for tag, value in model.named_parameters():
                 tag = tag.replace('.', '/')
                 logger.histo_summary(tag, value.data.cpu().numpy(), epoch + 1)
-                logger.histo_summary(tag + '/grad', value.grad.data.cpu().numpy(), epoch + 1)
+                # logger.histo_summary(tag + '/grad', value.grad.data.cpu().numpy(), epoch + 1)
 
             # 3. Log training images (image summary)
             # info = {'images': gt[:10].cpu().numpy()}
@@ -133,7 +133,7 @@ def test(epoch):
             N = N + data.num_graphs
             gt = to_dense_adj(data.edge_index, batch=data.batch, edge_attr=data.edge_attr)
 
-            if i == 0 and epoch % 200 == 0:
+            if i == 0 and epoch % 50 == 0:
                 plt.subplot(1, 2, 1)
                 plt.imshow(sort_matrix(recon[0].detach().cpu().data.numpy())[0])
                 plt.subplot(1, 2, 2)
@@ -147,23 +147,13 @@ def test(epoch):
 if __name__ == '__main__':
     loss_train = []
     loss_test = []
-<<<<<<< HEAD
-    model.load_state_dict(torch.load(Args.MODEL_CP_PATH + "/model_chk_" + str(2905)))
-    test()
-    # for i in range(3000):
-    #     loss_tr = train_baseline(i)
-    #     loss_ts = test(i)
-    #     loss_train.append(loss_tr)
-    #     loss_test.append(loss_ts)
-    #     if i % 50 == 0:
-    #         print("Epoch: {}, Train Loss: {:0.5f}, Test Loss: {:0.5f}".format(i, loss_tr, loss_ts))
-    #
-    # plt.plot(loss_train, 'r')
-    # plt.plot(loss_test, 'b')
-    # plt.show()
-=======
-    # model.load_state_dict(torch.load(Args.MODEL_CP_PATH + "/model_chk_modloss" + str(700)))
+    # model.load_state_dict(torch.load(Args.MODEL_CP_PATH + "/model_chk_modloss" + str(1000)))
     # model.eval()
+    # checkpoint = torch.load(Args.MODEL_CP_PATH + "/model_chk_modloss" + str(1000))
+    # model.load_state_dict(checkpoint['model_state_dict'])
+    # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    # epoch = checkpoint['epoch']
+    # loss = checkpoint['loss']
     for i in range(0, 30000):
         loss_tr = train_baseline(i)
         loss_ts = test(i)
@@ -176,4 +166,3 @@ if __name__ == '__main__':
     plt.plot(loss_train, 'r')
     plt.plot(loss_test, 'b')
     plt.show()
->>>>>>> 50a60fbeae386dc61ae78adfd7252865c46f8f05
