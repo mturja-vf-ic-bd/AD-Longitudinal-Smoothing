@@ -24,7 +24,7 @@ def normalize_feat(x):
     x = (x - torch.mean(x, dim=dim, keepdim=True)) / torch.std(x, dim=dim, keepdim=True)
     return x
 
-def convert_to_geom(node_feat, adj_mat, label, age, normalize=False, threshold=0.005, self_loop=False, extend_node=True):
+def convert_to_geom(node_feat, adj_mat, label, age, normalize=False, threshold=0.0005, self_loop=False, extend_node=True):
     if normalize:
         adj_mat = normalize_net(adj_mat, threshold, self_loop=self_loop)
     if isinstance(node_feat, list):

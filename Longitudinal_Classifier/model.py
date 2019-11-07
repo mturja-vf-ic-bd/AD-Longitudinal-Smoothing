@@ -223,7 +223,7 @@ class ReconNet(nn.Module):
         self.rho_mean = nn.Sequential(nn.Linear(self.sum_feat, self.sum_feat), nn.ReLU())
         self.rho_std = nn.Sequential(nn.Linear(self.sum_feat, self.sum_feat), nn.ReLU())
         for i in range(1, len(gcn_feat) - 1):
-            self.gcn_layer.append(GCNConv(gcn_feat[i], gcn_feat[i+1]))
+            self.gcn_layer.append(SAGEConv(gcn_feat[i], gcn_feat[i+1], normalize=True))
             self.add_module('GCN_{}'.format(i-1), self.gcn_layer[i-1])
             nn.init.normal_(self.gcn_layer[i-1].weight, 0, 1)
 
@@ -237,7 +237,7 @@ class ReconNet(nn.Module):
 
     def forward(self, g):
         x, edge_index, edge_attr, batch, batch_size = g.x, g.edge_index, g.edge_attr, g.batch, g.num_graphs
-        x = self.encode(x)
+        # x = self.encode(x)
         for i, l in enumerate(self.gcn_layer):
             x_new = l(x=x, edge_index=edge_index, edge_weight=edge_attr)
             x_new = F.relu(x_new)
@@ -256,9 +256,9 @@ class ReconNet(nn.Module):
         # x = (x - x.mean(dim=2, keepdim=True)) / x_std
         A_recon = torch.matmul(mu, torch.transpose(mu, 1, 2)) * I_prime
         A_mask = torch.sigmoid(torch.matmul(logvar, torch.transpose(logvar, 1, 2))) * I_prime
-        # deg = (torch.sum(A_recon, dim=1, keepdim=True) + 1e-10) ** (-0.5)
-        # norm = torch.matmul(torch.transpose(deg, 1, 2), deg)
-        # A_recon = A_recon * norm
+        deg = (torch.sum(A_recon, dim=1, keepdim=True) + 1e-10) ** (-0.5)
+        norm = torch.matmul(torch.transpose(deg, 1, 2), deg)
+        A_recon = A_recon * norm
         return A_recon, A_mask
 
 class LinearGraphVAE(nn.Module):
