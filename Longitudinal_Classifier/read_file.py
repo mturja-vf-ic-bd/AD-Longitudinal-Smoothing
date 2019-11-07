@@ -85,6 +85,7 @@ def read_subject_data(subject_id, data_type='all', net_dir=Args.NETWORK_DIR, con
     adj_mat = []
     node_feat = []
     dx_label = []
+    age = []
     for network in network_arr:
         parc_table = read_parcellation_table(network["network_id"])
         network_data = read_matrix_from_text_file(network["network_id"], net_dir)
@@ -109,13 +110,14 @@ def read_subject_data(subject_id, data_type='all', net_dir=Args.NETWORK_DIR, con
             # features = getFiedlerFeature(np.expand_dims(network_data, axis=0))
             node_feat.append(features)
             dx_label.append(int(network['dx_data']) - 1)
+            age.append(network['age'])
 
     if conv_to_tensor:
         import torch
         node_feat = torch.FloatTensor(node_feat)
         adj_mat = torch.FloatTensor(adj_mat)
     if data_type == 'all':
-        return {"subject": subject_id, "node_feature": node_feat, "adjacency_matrix": adj_mat, "dx_label": dx_label}
+        return {"subject": subject_id, "node_feature": node_feat, "adjacency_matrix": adj_mat, "dx_label": dx_label, "age": age}
 
     elif data_type == 'network':
         return adj_mat
@@ -147,7 +149,7 @@ def read_full_csv_file(col=[2, 3]):
     return table
 
 def read_temporal_mapping():
-    with open(os.path.join(Args.OTHER_DIR, 'temporal_mapping_baselabel.json')) as f:
+    with open(os.path.join(Args.OTHER_DIR, 'temporal_mapping_new.json')) as f:
         temap = json.load(f)
 
     return temap
@@ -167,7 +169,6 @@ def read_all_subjects(data_type='all', net_dir=Args.NETWORK_DIR, classes=[0, 1, 
     w = torch.FloatTensor(count)
     w = w / torch.sum(w)
     return data_set, w.to(Args.device)
-
 
 def get_baselines(normalize=False, net_dir=Args.NETWORK_DIR, label=None):
     data_set = read_all_subjects(net_dir=net_dir)

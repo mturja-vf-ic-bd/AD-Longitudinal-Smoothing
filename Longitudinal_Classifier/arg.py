@@ -10,7 +10,7 @@ class Args:
     PARC_DIR = os.path.join(BASE_DIR, "AD_parc")
     OTHER_DIR = os.path.join(BASE_DIR, "AD_files")
     ORIG_DATA = os.path.join(OTHER_DIR, "data.csv")
-    SUB_TO_NET_MAP = os.path.join(OTHER_DIR, "temporal_mapping.json")
+    SUB_TO_NET_MAP = os.path.join(OTHER_DIR, "temporal_mapping_new.json")
     HOME_DIR = os.path.join(BASE_DIR, "AD-Longitudinal-Smoothing")
     MODEL_CP_PATH = os.path.join(HOME_DIR, "model_cp")
 
@@ -20,3 +20,5 @@ class Args:
     device = torch.device('cuda' if cuda else 'cpu')
     max_t = 8
     n_nodes = 148
+    AGE_MEAN = 74
+    AGE_STD = 6.8
