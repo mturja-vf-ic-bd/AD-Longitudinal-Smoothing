@@ -53,11 +53,13 @@ test_loader = loader.DataLoader(test_data, batch_size=32)
 S, S_con = get_cluster_assignment_matrix()
 S = torch.FloatTensor(S).unsqueeze(0).to(Args.device)
 
-model = ReconNet(gcn_feat=[164, 32, 16])
+
+model = ReconNet(gcn_feat=[164, 128, 64])
 model.to(Args.device)
 
 I_prime = (1 - torch.eye(Args.n_nodes, Args.n_nodes).unsqueeze(0)).to(Args.device)
-optimizer = torch.optim.SGD(model.parameters(), lr=3e-3, weight_decay=0.01)
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-6, weight_decay=0.01)
+
 
 logger = Logger('./logs')
 
@@ -79,6 +81,7 @@ def train_baseline(epoch):
         # loss_mask = torch.mean(-net * torch.log(mask+1e-5) - (1 - net) * torch.log(1 - mask + 1e-5)) + torch.mean(mask * torch.log(1 - mask + 1e-5))
         recon_loss = F.mse_loss(recon, gt, reduce=None)
         spatial_loss = torch.sum(torch.matmul(torch.matmul(torch.transpose(x, 1, 2), gt), x) * torch.eye(x.size(2)).to(Args.device))
+
         # loss = loss + loss_mask + torch.mean(torch.abs(mask))
         n = recon.size(1)
         l1_loss_1 = torch.sum(torch.abs(recon)[:, 0:n//2, n//2:n]) + torch.sum(torch.abs(recon)[:, n//2:n, 0:n//2])
@@ -149,8 +152,13 @@ def test(epoch):
 if __name__ == '__main__':
     loss_train = []
     loss_test = []
-    # model.load_state_dict(torch.load(Args.MODEL_CP_PATH + "/model_chk_modloss" + str(700)))
+    # model.load_state_dict(torch.load(Args.MODEL_CP_PATH + "/model_chk_modloss" + str(1000)))
     # model.eval()
+    # checkpoint = torch.load(Args.MODEL_CP_PATH + "/model_chk_modloss" + str(1000))
+    # model.load_state_dict(checkpoint['model_state_dict'])
+    # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    # epoch = checkpoint['epoch']
+    # loss = checkpoint['loss']
     for i in range(0, 30000):
         loss_tr = train_baseline(i)
         loss_ts = test(i)
