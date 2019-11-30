@@ -24,7 +24,7 @@ def normalize_feat(x):
     x = (x - torch.mean(x, dim=dim, keepdim=True)) / torch.std(x, dim=dim, keepdim=True)
     return x
 
-def convert_to_geom(node_feat, adj_mat, label, age, normalize=False, threshold=0.0005, self_loop=False, extend_node=True):
+def convert_to_geom(node_feat, adj_mat, label, age=None, add_label=True, normalize=False, threshold=0.0005, self_loop=False, extend_node=True):
     if normalize:
         adj_mat = normalize_net(adj_mat, threshold, self_loop=self_loop)
     if isinstance(node_feat, list):
@@ -36,13 +36,17 @@ def convert_to_geom(node_feat, adj_mat, label, age, normalize=False, threshold=0
     # node_feat = (node_feat - node_feat.mean()) / node_feat.std()
     x = torch.zeros(Args.n_nodes, Args.max_t)
     node_feat = torch.tensor(node_feat, dtype=torch.float)
-    x[:, :node_feat.size(1)] = node_feat
-    x_I = torch.eye(x.size(0))
-    x = torch.cat((x, x_I), 1)
-    S, x_con = get_cluster_assignment_matrix()
-    x = torch.cat((x, torch.FloatTensor(x_con)), 1)
-    age = torch.ones(Args.n_nodes, 1) * (age - Args.AGE_MEAN) / Args.AGE_STD
-    x = torch.cat((x, age), 1)
+    if add_label:
+        x[:, :node_feat.size(1)] = node_feat
+        x_I = torch.eye(x.size(0))
+        x = torch.cat((x, x_I), 1)
+        S, x_con = get_cluster_assignment_matrix()
+        x = torch.cat((x, torch.FloatTensor(x_con)), 1)
+    else:
+        x = node_feat.view(-1, 1)
+    if age is not None:
+        age = torch.ones(Args.n_nodes, 1) * (age - Args.AGE_MEAN) / Args.AGE_STD
+        x = torch.cat((x, age), 1)
     g = Data(x=x, edge_index=edge_ind, edge_attr=edge_attr, y=label)
     if Args.cuda:
         g.to(Args.device)
@@ -125,6 +129,8 @@ def get_aggr_net(data, reduce='median', label=[0,1,2,3]):
 
     if reduce == 'median':
         return np.percentile(M, q=0.5, axis=0)
+    elif reduce == 'mean':
+        return np.mean(M, axis=0)
 
 
 def plot_group_net(data, reduce='median', label=[0, 1, 2, 3]):

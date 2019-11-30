@@ -192,6 +192,9 @@ def plot_circle(color_list_face, color_list_edge, edges, save=True, fname='circl
     else:
         plt.show()
 
+def plot_feature(F, net):
+    edges = get_top_links(net, count=500, offset=0, weight=True)
+
 def main(sub="027_S_5110", sm=False):
     data, sm_data = readSubjectFiles(sub, "whole", sort=False)
 
