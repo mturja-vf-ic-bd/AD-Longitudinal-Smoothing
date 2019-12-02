@@ -13,6 +13,16 @@ class GraphSpectrum:
         if A is not None:
             self.A = A
 
+    def normalize_mat(self, A=None):
+        if A is None:
+            A = self.A
+        D = (A.sum(axis=1)).reshape((1, -1))
+        # A = D^(-1/2) A D^(-1/2)
+        D = D ** (-0.5)
+        D_inv = np.dot(D.T, D)
+        A_tld = np.multiply(D_inv, A)
+        return A_tld
+
     def normalized_laplacian(self, A=None):
         if A is None:
             A = self.A
@@ -68,6 +78,7 @@ class GraphSpectrum:
             res = get_one_hot(res, k)
         return res
 
+    # def hierarchical_cluster(self, A=None, hier_num=[50, 12]):
     def get_wavelet(self, A=None, k=6):
         if A is None:
             A = self.A
