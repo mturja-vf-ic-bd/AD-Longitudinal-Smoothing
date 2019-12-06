@@ -70,7 +70,7 @@ def get_train_test_fold(x, y, ratio=0.2):
     n_fold = int(1/ratio)
     train_fold = []
     test_fold = []
-    kf = StratifiedKFold(n_splits=n_fold, shuffle=True)
+    kf = StratifiedKFold(n_splits=n_fold, shuffle=False, random_state=42)
     for train_index, test_index in kf.split(x, y):
         train_fold.append(train_index)
         test_fold.append(test_index)
