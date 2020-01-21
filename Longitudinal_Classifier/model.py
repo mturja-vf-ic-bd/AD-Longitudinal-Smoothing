@@ -249,7 +249,17 @@ class ReconNet(nn.Module):
         # A_recon = torch.sigmoid(A_recon)
         return A_recon, x, F.mse_loss(x_recon, x_orig[:,:,:8])
 
-class LinearGraphVAE(nn.Module):
-    def __init__(self):
-        super(LinearGraphVAE, self).__init__()
-        self.layer = []
+
+from torch_geometric.nn.models import GraphUNet
+
+
+class GUnetAE(nn.Module):
+    def __init__(self, in_channel, hidden_channel, out_channel, depth):
+        super(GUnetAE, self).__init__()
+        self.encoder = GraphUNet(in_channel, hidden_channel, out_channel, depth)
+
+    def forward(self, g):
+        x, edge_ind, edge_w = g.x, g.edge_index, g.edge_attr
+        x = self.encoder(x, edge_ind, edge_w)
+        A_rec = F.sigmoid(torch.matmul(x, torch.transpose(x, 0, 1)))
+        return x, A_rec
