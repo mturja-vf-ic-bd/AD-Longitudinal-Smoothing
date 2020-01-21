@@ -16,16 +16,18 @@ data, count = read_all_subjects(classes=[0, 1, 2, 3], conv_to_tensor=False)
 # Structural Mask
 net = get_aggr_net(data)
 net = normalize_net(net)
-# net[net > 0] = 1
 net = torch.FloatTensor(net).to(Args.device)
 
 # Cortico Spatial Network
 csg = torch.FloatTensor(np.loadtxt('/home/mturja/tmp/AD-Long/cortico_spatial_graph.txt'))
 csg[csg < 0.005] = 0
+csg[csg > 0] = 1
 csg = (torch.eye(Args.n_nodes) - csg).to(Args.device)
 
 count = 1 / count
 count[torch.isinf(count)] = 0
+
+print("Device: ", Args.device)
 
 G = []
 Y = []
@@ -51,11 +53,13 @@ test_loader = loader.DataLoader(test_data, batch_size=32)
 S, S_con = get_cluster_assignment_matrix()
 S = torch.FloatTensor(S).unsqueeze(0).to(Args.device)
 
+
 model = ReconNet(gcn_feat=[164, 128, 64])
 model.to(Args.device)
 
 I_prime = (1 - torch.eye(Args.n_nodes, Args.n_nodes).unsqueeze(0)).to(Args.device)
 optimizer = torch.optim.SGD(model.parameters(), lr=1e-6, weight_decay=0.01)
+
 
 logger = Logger('./logs')
 
@@ -76,7 +80,8 @@ def train_baseline(epoch):
         gt = to_dense_adj(data.edge_index, batch=data.batch, edge_attr=data.edge_attr)
         # loss_mask = torch.mean(-net * torch.log(mask+1e-5) - (1 - net) * torch.log(1 - mask + 1e-5)) + torch.mean(mask * torch.log(1 - mask + 1e-5))
         recon_loss = F.mse_loss(recon, gt, reduce=None)
-        spatial_loss = torch.sum(torch.matmul(torch.matmul(torch.transpose(x, 1, 2), recon), x) * torch.eye(x.size(2)).to(Args.device))
+        spatial_loss = torch.sum(torch.matmul(torch.matmul(torch.transpose(x, 1, 2), gt), x) * torch.eye(x.size(2)).to(Args.device))
+
         # loss = loss + loss_mask + torch.mean(torch.abs(mask))
         n = recon.size(1)
         l1_loss_1 = torch.sum(torch.abs(recon)[:, 0:n//2, n//2:n]) + torch.sum(torch.abs(recon)[:, n//2:n, 0:n//2])
@@ -84,7 +89,7 @@ def train_baseline(epoch):
 
         # modularity_loss_inter = torch.sum(torch.matmul(torch.matmul(torch.transpose(S, 1, 2), recon), S))
         # modularity_loss_intra = torch.sum(torch.matmul(S, torch.transpose(S, 1, 2)) * I_prime * recon)
-        loss = recon_loss + spatial_loss
+        loss = 1e3 * recon_loss + 1e-2*spatial_loss
         loss.backward()
         optimizer.step()
 

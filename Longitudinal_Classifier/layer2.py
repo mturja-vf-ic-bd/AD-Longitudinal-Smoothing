@@ -17,9 +17,11 @@ class SimpleLinear(nn.Module):
         for i, l in enumerate(self.dns_lr):
             self.add_module('Dense_{}'.format(i), l)
 
-    def forward(self, g, batch):
+    def forward(self, g, batch, idx=None):
         x = g.x
         x = x.view(batch, -1)
+        if idx is not None:
+            x = x[:, idx]
         for i, l in enumerate(self.dns_lr):
             if i > 0:
                 x = F.dropout(x)

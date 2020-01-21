@@ -149,7 +149,7 @@ def read_full_csv_file(col=[2, 3]):
     return table
 
 def read_temporal_mapping():
-    with open(os.path.join(Args.OTHER_DIR, 'temporal_mapping_new.json')) as f:
+    with open(os.path.join(Args.OTHER_DIR, 'temporal_mapping_baselabel.json')) as f:
         temap = json.load(f)
 
     return temap
